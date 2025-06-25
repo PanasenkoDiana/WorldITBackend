@@ -86,6 +86,9 @@ Prisma.NullTypes = {
  * Enums
  */
 exports.Prisma.TransactionIsolationLevel = makeStrictEnum({
+  ReadUncommitted: 'ReadUncommitted',
+  ReadCommitted: 'ReadCommitted',
+  RepeatableRead: 'RepeatableRead',
   Serializable: 'Serializable'
 });
 
@@ -213,6 +216,60 @@ exports.Prisma.NullsOrder = {
   first: 'first',
   last: 'last'
 };
+
+exports.Prisma.PostOrderByRelevanceFieldEnum = {
+  title: 'title',
+  content: 'content',
+  topic: 'topic'
+};
+
+exports.Prisma.AlbumOrderByRelevanceFieldEnum = {
+  name: 'name'
+};
+
+exports.Prisma.ChatGroupOrderByRelevanceFieldEnum = {
+  name: 'name',
+  avatar: 'avatar'
+};
+
+exports.Prisma.ChatMessageOrderByRelevanceFieldEnum = {
+  content: 'content',
+  attached_image: 'attached_image'
+};
+
+exports.Prisma.ImageOrderByRelevanceFieldEnum = {
+  filename: 'filename',
+  file: 'file'
+};
+
+exports.Prisma.LinkOrderByRelevanceFieldEnum = {
+  url: 'url'
+};
+
+exports.Prisma.ProfileOrderByRelevanceFieldEnum = {
+  signature: 'signature'
+};
+
+exports.Prisma.TagOrderByRelevanceFieldEnum = {
+  name: 'name'
+};
+
+exports.Prisma.UserOrderByRelevanceFieldEnum = {
+  email: 'email',
+  password: 'password',
+  name: 'name',
+  surname: 'surname',
+  username: 'username'
+};
+
+exports.Prisma.GroupOrderByRelevanceFieldEnum = {
+  name: 'name'
+};
+
+exports.Prisma.PermissionOrderByRelevanceFieldEnum = {
+  name: 'name',
+  codename: 'codename'
+};
 exports.FriendRequestStatus = exports.$Enums.FriendRequestStatus = {
   accepted: 'accepted',
   pending: 'pending'
@@ -246,7 +303,7 @@ const config = {
       "value": "prisma-client-js"
     },
     "output": {
-      "value": "D:\\Work\\BuzzleBackend\\src\\generated\\prisma",
+      "value": "C:\\Users\\deesh\\OneDrive\\Рабочий стол\\BuzzleBackend\\src\\generated\\prisma",
       "fromEnvVar": null
     },
     "config": {
@@ -260,7 +317,7 @@ const config = {
       }
     ],
     "previewFeatures": [],
-    "sourceFilePath": "D:\\Work\\BuzzleBackend\\prisma\\schema.prisma",
+    "sourceFilePath": "C:\\Users\\deesh\\OneDrive\\Рабочий стол\\BuzzleBackend\\prisma\\schema.prisma",
     "isCustomOutput": true
   },
   "relativeEnvPaths": {
@@ -273,7 +330,8 @@ const config = {
   "datasourceNames": [
     "db"
   ],
-  "activeProvider": "sqlite",
+  "activeProvider": "mysql",
+  "postinstall": false,
   "inlineDatasources": {
     "db": {
       "url": {
@@ -282,8 +340,8 @@ const config = {
       }
     }
   },
-  "inlineSchema": "model Post {\n  id      Int     @id @default(autoincrement())\n  title   String\n  content String?\n  topic   String?\n\n  authorId Int\n  author   User @relation(\"PostsAuthored\", fields: [authorId], references: [id])\n\n  images Image[]   @relation(\"PostImages\")\n  views  Profile[] @relation(\"PostViews\")\n  likes  Profile[] @relation(\"PostLikes\")\n  tags   Tag[]     @relation(\"PostTags\")\n  links  Link[]\n}\n\nmodel Album {\n  id        Int      @id @default(autoincrement())\n  name      String\n  createdAt DateTime @default(now())\n\n  previewImageId Int?   @unique\n  previewImage   Image? @relation(\"PreviewImage\", fields: [previewImageId], references: [id])\n\n  shown Boolean @default(true)\n\n  topicId Int?\n  topic   Tag? @relation(fields: [topicId], references: [id])\n\n  userId Int\n  user   User @relation(fields: [userId], references: [id])\n\n  images Image[] @relation(\"AlbumImages\")\n}\n\nmodel Avatar {\n  id Int @id @default(autoincrement())\n\n  image      Image   @relation(\"AvatarImages\", fields: [imageId], references: [id])\n  imageId    Int     @unique\n  profile    Profile @relation(fields: [profile_id], references: [id])\n  profile_id Int\n  active     Boolean @default(true)\n  shown      Boolean @default(true)\n\n  @@map(\"app_avatar\")\n}\n\nmodel ChatGroup {\n  id               Int     @id @default(autoincrement())\n  name             String\n  is_personal_chat Boolean @default(false)\n\n  adminId Int\n  admin   User @relation(\"AdminGroup\", fields: [adminId], references: [id])\n\n  members User[]  @relation(\"Members\")\n  avatar  String?\n\n  messages ChatMessage[]\n\n  @@map(\"chat_group\")\n}\n\nmodel ChatMessage {\n  id      Int    @id @default(autoincrement())\n  content String\n\n  authorId Int\n  author   User @relation(fields: [authorId], references: [id])\n\n  chatGroupId Int\n  chat_group  ChatGroup @relation(fields: [chatGroupId], references: [id])\n\n  sent_at        DateTime @default(now())\n  attached_image String?\n\n  @@map(\"chat_message\")\n}\n\nmodel FriendRequest {\n  id     Int                 @id @default(autoincrement())\n  from   User                @relation(\"SentRequests\", fields: [fromId], references: [id])\n  fromId Int\n  to     User                @relation(\"ReceivedRequests\", fields: [toId], references: [id])\n  toId   Int\n  status FriendRequestStatus\n\n  @@unique([fromId, toId])\n}\n\nenum FriendRequestStatus {\n  accepted\n  pending\n}\n\nmodel Image {\n  id         Int      @id @default(autoincrement())\n  filename   String\n  file       String\n  uploadedAt DateTime @default(now())\n\n  avatar Avatar? @relation(\"AvatarImages\")\n\n  albumPreviewOf Album? @relation(\"PreviewImage\")\n\n  userId Int?\n  user   User? @relation(fields: [userId], references: [id])\n\n  post   Post? @relation(\"PostImages\", fields: [postId], references: [id])\n  postId Int?\n\n  album   Album? @relation(\"AlbumImages\", fields: [albumId], references: [id])\n  albumId Int?\n}\n\nmodel Link {\n  id  Int    @id @default(autoincrement())\n  url String\n\n  postId Int\n  post   Post @relation(fields: [postId], references: [id])\n}\n\nmodel Profile {\n  id            Int      @id @default(autoincrement())\n  user          User     @relation(fields: [user_id], references: [id])\n  user_id       Int      @unique\n  date_of_birth DateTime\n  signature     String? // путь к изображению или null\n\n  avatars Avatar[]\n\n  posts_viewed Post[] @relation(\"PostViews\")\n  posts_liked  Post[] @relation(\"PostLikes\")\n\n  @@map(\"app_profile\") // если хочешь сохранить имя как в Django\n}\n\nmodel Tag {\n  id   Int    @id @default(autoincrement())\n  name String @unique\n\n  posts  Post[]  @relation(\"PostTags\")\n  albums Album[]\n}\n\nmodel User {\n  id       Int     @id @default(autoincrement())\n  email    String  @unique\n  password String\n  name     String?\n  surname  String?\n  username String? @unique\n\n  images Image[]\n  albums Album[]\n\n  posts_authored Post[] @relation(\"PostsAuthored\")\n\n  sentRequests     FriendRequest[] @relation(\"SentRequests\")\n  receivedRequests FriendRequest[] @relation(\"ReceivedRequests\")\n\n  last_login   DateTime?\n  is_staff     Boolean   @default(false)\n  is_active    Boolean   @default(true)\n  is_superuser Boolean   @default(false)\n  date_joined  DateTime  @default(now())\n\n  groups           UserGroup[]\n  user_permissions UserPermission[]\n  Profile          Profile?\n\n  ChatGroup      ChatGroup[]   @relation(\"Members\")\n  ChatMessage    ChatMessage[]\n  AdminChatGroup ChatGroup[]   @relation(\"AdminGroup\")\n\n  @@map(\"auth_user\")\n}\n\nmodel Group {\n  id    Int         @id @default(autoincrement())\n  name  String      @unique\n  users UserGroup[]\n\n  @@map(\"auth_group\")\n}\n\nmodel Permission {\n  id       Int              @id @default(autoincrement())\n  name     String\n  codename String\n  users    UserPermission[]\n\n  @@map(\"auth_permission\")\n}\n\nmodel UserGroup {\n  id       Int   @id @default(autoincrement())\n  user     User  @relation(fields: [user_id], references: [id])\n  user_id  Int\n  group    Group @relation(fields: [group_id], references: [id])\n  group_id Int\n\n  @@unique([user_id, group_id])\n  @@map(\"auth_user_groups\")\n}\n\nmodel UserPermission {\n  id            Int        @id @default(autoincrement())\n  user          User       @relation(fields: [user_id], references: [id])\n  user_id       Int\n  permission    Permission @relation(fields: [permission_id], references: [id])\n  permission_id Int\n\n  @@unique([user_id, permission_id])\n  @@map(\"auth_user_user_permissions\")\n}\n\n// This is your Prisma schema file,\n// learn more about it in the docs: https://pris.ly/d/prisma-schema\n\n// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?\n// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init\n\ngenerator client {\n  provider = \"prisma-client-js\"\n  output   = \"../src/generated/prisma\"\n}\n\ndatasource db {\n  provider = \"sqlite\"\n  url      = env(\"DATABASE_URL\")\n}\n",
-  "inlineSchemaHash": "8bb501584eea2c4fbe08bf45c26f497f37d58ef18665d1f53b6c14f2d3f54165",
+  "inlineSchema": "model Post {\n  id      Int     @id @default(autoincrement())\n  title   String\n  content String?\n  topic   String?\n\n  authorId Int\n  author   User @relation(\"PostsAuthored\", fields: [authorId], references: [id])\n\n  images Image[]   @relation(\"PostImages\")\n  views  Profile[] @relation(\"PostViews\")\n  likes  Profile[] @relation(\"PostLikes\")\n  tags   Tag[]     @relation(\"PostTags\")\n  links  Link[]\n}\n\nmodel Album {\n  id        Int      @id @default(autoincrement())\n  name      String\n  createdAt DateTime @default(now())\n\n  previewImageId Int?   @unique\n  previewImage   Image? @relation(\"PreviewImage\", fields: [previewImageId], references: [id])\n\n  shown Boolean @default(true)\n\n  topicId Int?\n  topic   Tag? @relation(fields: [topicId], references: [id])\n\n  userId Int\n  user   User @relation(fields: [userId], references: [id])\n\n  images Image[] @relation(\"AlbumImages\")\n}\n\nmodel Avatar {\n  id Int @id @default(autoincrement())\n\n  image      Image   @relation(\"AvatarImages\", fields: [imageId], references: [id])\n  imageId    Int     @unique\n  profile    Profile @relation(fields: [profile_id], references: [id])\n  profile_id Int\n  active     Boolean @default(true)\n  shown      Boolean @default(true)\n\n  @@map(\"app_avatar\")\n}\n\nmodel ChatGroup {\n  id               Int     @id @default(autoincrement())\n  name             String\n  is_personal_chat Boolean @default(false)\n\n  adminId Int\n  admin   User @relation(\"AdminGroup\", fields: [adminId], references: [id])\n\n  members User[]  @relation(\"Members\")\n  avatar  String?\n\n  messages ChatMessage[]\n\n  @@map(\"chat_group\")\n}\n\nmodel ChatMessage {\n  id      Int    @id @default(autoincrement())\n  content String\n\n  authorId Int\n  author   User @relation(fields: [authorId], references: [id])\n\n  chatGroupId Int\n  chat_group  ChatGroup @relation(fields: [chatGroupId], references: [id])\n\n  sent_at        DateTime @default(now())\n  attached_image String?\n\n  @@map(\"chat_message\")\n}\n\nmodel FriendRequest {\n  id     Int                 @id @default(autoincrement())\n  from   User                @relation(\"SentRequests\", fields: [fromId], references: [id])\n  fromId Int\n  to     User                @relation(\"ReceivedRequests\", fields: [toId], references: [id])\n  toId   Int\n  status FriendRequestStatus\n\n  @@unique([fromId, toId])\n}\n\nenum FriendRequestStatus {\n  accepted\n  pending\n}\n\nmodel Image {\n  id         Int      @id @default(autoincrement())\n  filename   String\n  file       String\n  uploadedAt DateTime @default(now())\n\n  avatar Avatar? @relation(\"AvatarImages\")\n\n  albumPreviewOf Album? @relation(\"PreviewImage\")\n\n  userId Int?\n  user   User? @relation(fields: [userId], references: [id])\n\n  post   Post? @relation(\"PostImages\", fields: [postId], references: [id])\n  postId Int?\n\n  album   Album? @relation(\"AlbumImages\", fields: [albumId], references: [id])\n  albumId Int?\n}\n\nmodel Link {\n  id  Int    @id @default(autoincrement())\n  url String\n\n  postId Int\n  post   Post @relation(fields: [postId], references: [id])\n}\n\nmodel Profile {\n  id            Int      @id @default(autoincrement())\n  user          User     @relation(fields: [user_id], references: [id])\n  user_id       Int      @unique\n  date_of_birth DateTime\n  signature     String? // путь к изображению или null\n\n  avatars Avatar[]\n\n  posts_viewed Post[] @relation(\"PostViews\")\n  posts_liked  Post[] @relation(\"PostLikes\")\n\n  @@map(\"app_profile\") // если хочешь сохранить имя как в Django\n}\n\nmodel Tag {\n  id   Int    @id @default(autoincrement())\n  name String @unique\n\n  posts  Post[]  @relation(\"PostTags\")\n  albums Album[]\n}\n\nmodel User {\n  id       Int     @id @default(autoincrement())\n  email    String  @unique\n  password String\n  name     String?\n  surname  String?\n  username String? @unique\n\n  images Image[]\n  albums Album[]\n\n  posts_authored Post[] @relation(\"PostsAuthored\")\n\n  sentRequests     FriendRequest[] @relation(\"SentRequests\")\n  receivedRequests FriendRequest[] @relation(\"ReceivedRequests\")\n\n  last_login   DateTime?\n  is_staff     Boolean   @default(false)\n  is_active    Boolean   @default(true)\n  is_superuser Boolean   @default(false)\n  date_joined  DateTime  @default(now())\n\n  groups           UserGroup[]\n  user_permissions UserPermission[]\n  Profile          Profile?\n\n  ChatGroup      ChatGroup[]   @relation(\"Members\")\n  ChatMessage    ChatMessage[]\n  AdminChatGroup ChatGroup[]   @relation(\"AdminGroup\")\n\n  @@map(\"auth_user\")\n}\n\nmodel Group {\n  id    Int         @id @default(autoincrement())\n  name  String      @unique\n  users UserGroup[]\n\n  @@map(\"auth_group\")\n}\n\nmodel Permission {\n  id       Int              @id @default(autoincrement())\n  name     String\n  codename String\n  users    UserPermission[]\n\n  @@map(\"auth_permission\")\n}\n\nmodel UserGroup {\n  id       Int   @id @default(autoincrement())\n  user     User  @relation(fields: [user_id], references: [id])\n  user_id  Int\n  group    Group @relation(fields: [group_id], references: [id])\n  group_id Int\n\n  @@unique([user_id, group_id])\n  @@map(\"auth_user_groups\")\n}\n\nmodel UserPermission {\n  id            Int        @id @default(autoincrement())\n  user          User       @relation(fields: [user_id], references: [id])\n  user_id       Int\n  permission    Permission @relation(fields: [permission_id], references: [id])\n  permission_id Int\n\n  @@unique([user_id, permission_id])\n  @@map(\"auth_user_user_permissions\")\n}\n\n// This is your Prisma schema file,\n// learn more about it in the docs: https://pris.ly/d/prisma-schema\n\n// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?\n// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init\n\ngenerator client {\n  provider = \"prisma-client-js\"\n  output   = \"../src/generated/prisma\"\n}\n\ndatasource db {\n  provider = \"mysql\"\n  url      = env(\"DATABASE_URL\")\n}\n",
+  "inlineSchemaHash": "13b879bd0131229e9a9fb309acb8c5e2e6ab604c719b88e199615d836e0bf537",
   "copyEngine": true
 }
 config.dirname = '/'

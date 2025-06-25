@@ -114,6 +114,9 @@ Prisma.NullTypes = {
  */
 
 exports.Prisma.TransactionIsolationLevel = makeStrictEnum({
+  ReadUncommitted: 'ReadUncommitted',
+  ReadCommitted: 'ReadCommitted',
+  RepeatableRead: 'RepeatableRead',
   Serializable: 'Serializable'
 });
 
@@ -240,6 +243,60 @@ exports.Prisma.SortOrder = {
 exports.Prisma.NullsOrder = {
   first: 'first',
   last: 'last'
+};
+
+exports.Prisma.PostOrderByRelevanceFieldEnum = {
+  title: 'title',
+  content: 'content',
+  topic: 'topic'
+};
+
+exports.Prisma.AlbumOrderByRelevanceFieldEnum = {
+  name: 'name'
+};
+
+exports.Prisma.ChatGroupOrderByRelevanceFieldEnum = {
+  name: 'name',
+  avatar: 'avatar'
+};
+
+exports.Prisma.ChatMessageOrderByRelevanceFieldEnum = {
+  content: 'content',
+  attached_image: 'attached_image'
+};
+
+exports.Prisma.ImageOrderByRelevanceFieldEnum = {
+  filename: 'filename',
+  file: 'file'
+};
+
+exports.Prisma.LinkOrderByRelevanceFieldEnum = {
+  url: 'url'
+};
+
+exports.Prisma.ProfileOrderByRelevanceFieldEnum = {
+  signature: 'signature'
+};
+
+exports.Prisma.TagOrderByRelevanceFieldEnum = {
+  name: 'name'
+};
+
+exports.Prisma.UserOrderByRelevanceFieldEnum = {
+  email: 'email',
+  password: 'password',
+  name: 'name',
+  surname: 'surname',
+  username: 'username'
+};
+
+exports.Prisma.GroupOrderByRelevanceFieldEnum = {
+  name: 'name'
+};
+
+exports.Prisma.PermissionOrderByRelevanceFieldEnum = {
+  name: 'name',
+  codename: 'codename'
 };
 exports.FriendRequestStatus = exports.$Enums.FriendRequestStatus = {
   accepted: 'accepted',

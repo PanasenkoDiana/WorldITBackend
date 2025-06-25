@@ -2,6 +2,7 @@ import { Router } from "express";
 import { authTokenMiddleware } from "../middlewares/authMiddlewares";
 import { UserController } from "./user.controller";
 
+
 const userRouter = Router();
 
 userRouter.post("/register", UserController.createUser)

@@ -13,21 +13,24 @@ import albumRouter from "./AlbumApp/album.router";
 import friendRouter from "./FriendApp/friend.router";
 import chatRouter from "./ChatApp/src/routes/chat.routes";
 import chatSocket from "./ChatApp/src/sockets/chat.socket";
+import { createTunnel } from "./sshTunnel";
 
 dotenv.config();
 
 const startServer = async () => {
 	try {
+		await createTunnel();
+
 		await prismaClient.$connect();
-		console.log("Successfully connected to database");
+		console.log("✅ Успешное подключение к базе данных");
 
 		const app = express();
 		const server = http.createServer(app);
 		const io = new Server(server, {
 			cors: {
 				origin: "*",
-				methods: ["GET", "POST"]
-			}
+				methods: ["GET", "POST"],
+			},
 		});
 
 		const HOST = "192.168.0.114";
@@ -49,16 +52,14 @@ const startServer = async () => {
 		server.listen(PORT, HOST, () => {
 			console.log(`🚀 Server running at http://${HOST}:${PORT}`);
 		});
-
 	} catch (error) {
-		console.error("Failed to start server:", error);
+		console.error("❌ Ошибка при запуске сервера:", error);
 		process.exit(1);
 	}
-}
+};
 
 startServer().catch(console.error);
 
-// Handle cleanup
 process.on("beforeExit", async () => {
 	await prismaClient.$disconnect();
 });
