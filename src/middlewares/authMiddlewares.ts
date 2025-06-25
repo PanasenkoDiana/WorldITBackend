@@ -9,8 +9,8 @@ interface IToken {
 }
 
 export function authTokenMiddleware(req: Request, res: Response, next: NextFunction) {
-    
     const authorization = req.headers.authorization
+    console.log('authorization', authorization)
 
     if (!authorization) {
         res.json({status: 'error', message: 'authorization required'})

@@ -1,13 +1,10 @@
 import { Request, Response } from "express"
 import { AlbumService } from "./album.service"
 
-
-
-
 export const AlbumController = {
     getAllAlbums: async function(req: Request, res: Response){
-        const id = res.locals.userId
-        const result = await AlbumService.getAllAlbums(+id)
+        const id = res.locals.userId as string | number | bigint
+        const result = await AlbumService.getAllAlbums(typeof id === "bigint" ? id : BigInt(id))
 
         res.json(result)
     },
@@ -15,7 +12,7 @@ export const AlbumController = {
     changeAlbum: async function(req:  Request, res: Response){
         const id = req.params.id
         const data = req.body
-        const result = await AlbumService.changeAlbum(data, +id)
+        const result = await AlbumService.changeAlbum(data, BigInt(id))
 
         res.json(result)
     },
@@ -23,30 +20,29 @@ export const AlbumController = {
     addPhotoToAlbum: async function(req: Request, res: Response){
         const id = req.params.id
         const data = req.body
-        const result = await AlbumService.addPhotoToAlbum(data, +id)
+        const result = await AlbumService.addPhotoToAlbum(data, BigInt(id))
 
         res.json(result)
     },
 
     createAlbum: async function(req: Request, res: Response){
-        const id = res.locals.userId
+        const id = res.locals.userId as string | number | bigint
         const data = req.body
-        const result = await AlbumService.createAlbum(data, +id)
+        const result = await AlbumService.createAlbum(data, typeof id === "bigint" ? id : BigInt(id))
 
         res.json(result)
     },
 
     deleteAlbumImage: async function(req: Request, res: Response){
         const id = req.body.id
-        const result = await AlbumService.deleteAlbumImage(+id)
+        const result = await AlbumService.deleteAlbumImage(BigInt(id))
 
         res.json(result)
     },
 
     deleteAlbum: async function(req: Request, res: Response){
-        const id = res.locals.userId
         const data = req.body
-        const result = await AlbumService.deleteAlbum(+data.id)
+        const result = await AlbumService.deleteAlbum(BigInt(data.id))
 
         res.json(result)
     },

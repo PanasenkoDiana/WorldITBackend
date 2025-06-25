@@ -13,194 +13,145 @@ import {
 } from "./friend.types";
 
 export const friendRepository = {
-	getAllFriends: async function (id: number): Promise<IUser[]> {
+	getAllFriends: async function (profileId: bigint): Promise<IUser[]> {
 		try {
-			const fromMyRequests = await prismaClient.friendRequest.findMany({
+			// Друзья, где пользователь инициатор (profile1_id)
+			const friendships = await prismaClient.user_app_friendship.findMany({
 				where: {
-					status: "accepted",
-					fromId: id,
+					accepted: true,
+					OR: [
+						{ profile1_id: profileId },
+						{ profile2_id: profileId },
+					],
 				},
-				select: {
-					to: {
-						select: {
-							id: true,
-							name: true,
-							surname: true,
-							username: true,
-							Profile: {
-								include: {
-									avatars: {
-										include: {
-											image: true,
-										},
-									},
-								},
-							},
+				include: {
+					user_app_profile_user_app_friendship_profile1_idTouser_app_profile: {
+						include: {
+							auth_user: true,
+							user_app_avatar: true,
+						},
+					},
+					user_app_profile_user_app_friendship_profile2_idTouser_app_profile: {
+						include: {
+							auth_user: true,
+							user_app_avatar: true,
 						},
 					},
 				},
 			});
 
-			const toMeRequests = await prismaClient.friendRequest.findMany({
-				where: {
-					status: "accepted",
-					toId: id,
-				},
-				select: {
-					from: {
-						select: {
-							id: true,
-							name: true,
-							surname: true,
-							username: true,
-							Profile: {
-								include: {
-									avatars: {
-										include: {
-											image: true,
-										},
-									},
-								},
-							},
-						},
+			return friendships.map((f) => {
+				const profile =
+					f.profile1_id === profileId
+						? f.user_app_profile_user_app_friendship_profile2_idTouser_app_profile
+						: f.user_app_profile_user_app_friendship_profile1_idTouser_app_profile;
+
+				return {
+					id: Number(profile.id),
+					first_name: profile.auth_user?.first_name || "",
+					last_name: profile.auth_user?.last_name || "",
+					username: profile.auth_user?.username || "",
+					user_app_profile: {
+						id: profile.id,
+						date_of_birth: profile.date_of_birth,
+						user_id: profile.user_id,
+						signature: profile.signature,
+						user_app_avatar: profile.user_app_avatar,
 					},
-				},
+				};
 			});
-
-			const friends = [
-				...fromMyRequests.map((req) => req.to),
-				...toMeRequests.map((req) => req.from),
-			];
-
-			return friends;
 		} catch (err) {
 			console.log(err);
 			throw err;
 		}
 	},
 
-	getRecommends: async function (id: number): Promise<IUser[]> {
+	getRecommends: async function (profileId: bigint): Promise<IUser[]> {
 		try {
-			const relatedUsers = await prismaClient.friendRequest.findMany({
+			const relatedFriendships = await prismaClient.user_app_friendship.findMany({
 				where: {
-					OR: [{ fromId: id }, { toId: id }],
-					status: { in: ["pending", "accepted"] },
+					OR: [
+						{ profile1_id: profileId },
+						{ profile2_id: profileId }
+					],
 				},
 				select: {
-					fromId: true,
-					toId: true,
+					profile1_id: true,
+					profile2_id: true,
 				},
 			});
 
 			const excludedIds = [
-				...relatedUsers.map((user) =>
-					user.fromId === id ? user.toId : user.fromId
+				...relatedFriendships.map((friendship) =>
+					friendship.profile1_id === profileId ? friendship.profile2_id : friendship.profile1_id
 				),
-				id,
+				profileId,
 			];
 
-			const users = await prismaClient.user.findMany({
+			const profiles = await prismaClient.user_app_profile.findMany({
 				where: {
 					id: { notIn: excludedIds },
 				},
 				orderBy: {
 					id: "desc",
 				},
-				select: {
-					id: true,
-					name: true,
-					surname: true,
-					username: true,
-					Profile: {
+				include: {
+					auth_user: true,
+					user_app_avatar: true,
+				},
+			});
+
+			return profiles.map(profile => ({
+				id: Number(profile.id),
+				first_name: profile.auth_user?.first_name || "",
+				last_name: profile.auth_user?.last_name || "",
+				username: profile.auth_user?.username || "",
+				user_app_profile: {
+					id: profile.id,
+					date_of_birth: profile.date_of_birth,
+					user_id: profile.user_id,
+					signature: profile.signature,
+					user_app_avatar: profile.user_app_avatar,
+				},
+			}));
+		} catch (err) {
+			console.log(err);
+			throw err;
+		}
+	},
+
+	getRequests: async function (profileId: bigint): Promise<IGetRequest[]> {
+		try {
+			const requests = await prismaClient.user_app_friendship.findMany({
+				where: {
+					accepted: false,
+					profile2_id: profileId,
+				},
+				include: {
+					user_app_profile_user_app_friendship_profile1_idTouser_app_profile: {
 						include: {
-							avatars: {
-								include: {
-									image: true,
-								},
-							},
-						},
-					},
-				},
+							auth_user: true,
+							user_app_avatar: true
+						}
+					}
+				}
 			});
 
-			return users;
-		} catch (err) {
-			console.log(err);
-			throw err;
-		}
-	},
-
-	getRequests: async function (id: number): Promise<IGetRequest[]> {
-		try {
-			const requests = await prismaClient.friendRequest.findMany({
-				where: {
-					status: "pending",
-					toId: id,
-				},
-				select: {
-					status: true,
-					from: {
-						select: {
-							id: true,
-							name: true,
-							surname: true,
-							username: true,
-							Profile: {
-								include: {
-									avatars: {
-										include: {
-											image: true,
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			});
-
-			return requests.map((req) => ({
-				status: 'pending',
-				from: req.from,
-			}));
-		} catch (err) {
-			console.log(err);
-			throw err;
-		}
-	},
-
-	getMyRequests: async function (id: number): Promise<IGetMyRequest[]> {
-		try {
-			const requests = await prismaClient.friendRequest.findMany({
-				where: {
-					status: "pending",
-					fromId: id,
-				},
-				select: {
-					status: true,
-					to: {
-						select: {
-							id: true,
-							name: true,
-							surname: true,
-							username: true,
-							Profile: {
-								include: {
-									avatars: {
-										include: {
-											image: true,
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			});
-
-			return requests.map((req) => ({
+			return requests.map(req => ({
 				status: "pending",
-				to: req.to,
+				from: {
+					id: Number(req.user_app_profile_user_app_friendship_profile1_idTouser_app_profile.id),
+					first_name: req.user_app_profile_user_app_friendship_profile1_idTouser_app_profile.auth_user?.first_name || "",
+					last_name: req.user_app_profile_user_app_friendship_profile1_idTouser_app_profile.auth_user?.last_name || "",
+					username: req.user_app_profile_user_app_friendship_profile1_idTouser_app_profile.auth_user?.username || "",
+					user_app_profile: {
+						id: req.user_app_profile_user_app_friendship_profile1_idTouser_app_profile.id,
+						date_of_birth: req.user_app_profile_user_app_friendship_profile1_idTouser_app_profile.date_of_birth,
+						user_id: req.user_app_profile_user_app_friendship_profile1_idTouser_app_profile.user_id,
+						signature: req.user_app_profile_user_app_friendship_profile1_idTouser_app_profile.signature,
+						user_app_avatar: req.user_app_profile_user_app_friendship_profile1_idTouser_app_profile.user_app_avatar
+					}
+				}
 			}));
 		} catch (err) {
 			console.log(err);
@@ -208,84 +159,133 @@ export const friendRepository = {
 		}
 	},
 
-	sendRequest: async function (
-		data: ICreateFriendRequest
-	): Promise<IFriendRequest> {
+	getMyRequests: async function (profileId: bigint): Promise<IGetMyRequest[]> {
 		try {
-			const request = await prismaClient.friendRequest.create({
-				data: {
-					status: "pending",
-					from: { connect: { id: data.fromId } },
-					to: { connect: { username: data.toUsername } },
+			const requests = await prismaClient.user_app_friendship.findMany({
+				where: {
+					accepted: false,
+					profile1_id: profileId
 				},
-				select: {
-					fromId: true,
-					toId: true,
-					status: true,
-				},
+				include: {
+					user_app_profile_user_app_friendship_profile2_idTouser_app_profile: {
+						include: {
+							auth_user: true,
+							user_app_avatar: true
+						}
+					}
+				}
 			});
-			return request;
+
+			return requests.map(req => ({
+				status: "pending",
+				to: {
+					id: Number(req.user_app_profile_user_app_friendship_profile2_idTouser_app_profile.id),
+					first_name: req.user_app_profile_user_app_friendship_profile2_idTouser_app_profile.auth_user?.first_name || "",
+					last_name: req.user_app_profile_user_app_friendship_profile2_idTouser_app_profile.auth_user?.last_name || "",
+					username: req.user_app_profile_user_app_friendship_profile2_idTouser_app_profile.auth_user?.username || "",
+					user_app_profile: {
+						id: req.user_app_profile_user_app_friendship_profile2_idTouser_app_profile.id,
+						date_of_birth: req.user_app_profile_user_app_friendship_profile2_idTouser_app_profile.date_of_birth,
+						user_id: req.user_app_profile_user_app_friendship_profile2_idTouser_app_profile.user_id,
+						signature: req.user_app_profile_user_app_friendship_profile2_idTouser_app_profile.signature,
+						user_app_avatar: req.user_app_profile_user_app_friendship_profile2_idTouser_app_profile.user_app_avatar
+					}
+				}
+			}));
 		} catch (err) {
 			console.log(err);
 			throw err;
 		}
 	},
 
-	acceptRequest: async function (
-		data: IAcceptFriendRequest
-	): Promise<IFriendRequest> {
+	sendRequest: async function (data: ICreateFriendRequest): Promise<IFriendRequest> {
 		try {
-			const fromUser = await prismaClient.user.findUnique({
-				where: { username: data.fromUsername },
-				select: { id: true },
-			});
-
-			if (!fromUser) throw new Error("User not found");
-
-			const request = await prismaClient.friendRequest.update({
-				where: {
-					fromId_toId: {
-						fromId: fromUser.id,
-						toId: data.toId,
-					},
+			const toProfile = await prismaClient.user_app_profile.findFirst({
+				where: { 
+					auth_user: { username: data.toUsername }
 				},
+				select: { id: true }
+			});
+			
+			if (!toProfile) throw new Error("User profile not found");
+
+			const request = await prismaClient.user_app_friendship.create({
 				data: {
-					status: "accepted",
+					accepted: false,
+					profile1_id: data.profile1_id,  // Changed from fromProfileId
+					profile2_id: toProfile.id
 				},
 				select: {
-					fromId: true,
-					toId: true,
-					status: true,
+					profile1_id: true,
+					profile2_id: true,
+					accepted: true
 				},
 			});
-			return request;
+			
+			return {
+				profile1_id: request.profile1_id,
+				profile2_id: request.profile2_id,
+				accepted: request.accepted
+			};
 		} catch (err) {
 			console.log(err);
 			throw err;
 		}
 	},
 
-	cancelRequest: async function (
-		data: ICancelFriendRequest
-	): Promise<ICanceledRequest> {
+	acceptRequest: async function (data: IAcceptFriendRequest): Promise<IFriendRequest> {
 		try {
-			const otherUser = await prismaClient.user.findUnique({
-				where: { username: data.username },
-				select: { id: true },
+			const fromProfile = await prismaClient.user_app_profile.findFirst({
+				where: {
+					auth_user: { username: data.fromUsername }
+				},
+				select: { id: true }
 			});
 
-			if (!otherUser) throw new Error("User not found");
+			if (!fromProfile) throw new Error("User profile not found");
 
-			const fromId = data.isIncoming ? otherUser.id : data.myId;
-			const toId = data.isIncoming ? data.myId : otherUser.id;
-
-			await prismaClient.friendRequest.delete({
+			const request = await prismaClient.user_app_friendship.updateMany({
 				where: {
-					fromId_toId: {
-						fromId,
-						toId,
-					},
+					profile1_id: fromProfile.id,
+					profile2_id: data.profile2_id,  // Changed from toProfileId
+					accepted: false
 				},
+				data: {
+					accepted: true
+				}
+			});
+
+			return {
+				profile1_id: fromProfile.id,
+				profile2_id: data.profile2_id,  // Changed from toProfileId
+				accepted: true
+			};
+		} catch (err) {
+			console.log(err);
+			throw err;
+		}
+	},
+
+	cancelRequest: async function (data: ICancelFriendRequest): Promise<ICanceledRequest> {
+		try {
+			const otherProfile = await prismaClient.user_app_profile.findFirst({
+				where: {
+					auth_user: { username: data.username }
+				},
+				select: { id: true }
+			});
+
+			if (!otherProfile) throw new Error("User profile not found");
+
+			const profile1_id = data.isIncoming ? otherProfile.id : data.profile1_id;
+			const profile2_id = data.isIncoming ? data.profile1_id : otherProfile.id;
+
+			await prismaClient.user_app_friendship.deleteMany({
+				where: {
+					profile1_id,
+					profile2_id,
+					accepted: false
+				}
 			});
 
 			return { status: "canceled" };
@@ -295,39 +295,25 @@ export const friendRepository = {
 		}
 	},
 
-	deleteFriend: async function (
-		data: IDeleteFriend
-	): Promise<IDeletedFriend> {
+	deleteFriend: async function (data: IDeleteFriend): Promise<IDeletedFriend> {
 		try {
-			const request = await prismaClient.friendRequest.findFirst({
+			const otherProfile = await prismaClient.user_app_profile.findFirst({
 				where: {
-					OR: [
-						{
-							from: { username: data.username },
-							toId: data.myId,
-						},
-						{
-							fromId: data.myId,
-							to: { username: data.username },
-						},
-					],
-					status: { in: ["pending", "accepted"] },
+					auth_user: { username: data.username }
 				},
-				select: {
-					fromId: true,
-					toId: true,
-				},
+				select: { id: true }
 			});
 
-			if (!request) throw new Error("Friend request not found");
+			if (!otherProfile) throw new Error("User profile not found");
 
-			await prismaClient.friendRequest.delete({
+			await prismaClient.user_app_friendship.deleteMany({
 				where: {
-					fromId_toId: {
-						fromId: request.fromId,
-						toId: request.toId,
-					},
-				},
+					OR: [
+						{ profile1_id: data.profile1_id, profile2_id: otherProfile.id },
+						{ profile1_id: otherProfile.id, profile2_id: data.profile1_id }
+					],
+					accepted: true
+				}
 			});
 
 			return { status: "deleted" };

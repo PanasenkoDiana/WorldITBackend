@@ -28,7 +28,7 @@ import path from "path";
 // }
 export const userPostService = {
 	createPost: async function (
-		userId: number,
+		profileId: bigint,
 		data: CreateUserPost,
 		images: string[],
 		links: string[]
@@ -37,12 +37,10 @@ export const userPostService = {
 			images.map((base64) => base64ToImage(base64))
 		);
 
-		console.log("images dataghhgfghfghfghfghfggh:", imagesData[0]?.file);
-
 		const linksWithUrl = (links || []).map(link => ({ url: link }));
 
 		const newPost = await userPostRepository.createPost(
-			userId,
+			profileId,
 			data,
 			imagesData,
 			linksWithUrl
@@ -52,8 +50,8 @@ export const userPostService = {
 	},
 
 	deletePost: async function (
-		userId: number,
-		postId: number
+		profileId: bigint,
+		postId: bigint
 	): Promise<Result<string>> {
 		try {
 			const post = await userPostRepository.getPostById(postId);
@@ -61,20 +59,23 @@ export const userPostService = {
 				return error("Post not found");
 			}
 
-			if (post.authorId !== userId) {
+			if (post.author_id !== profileId) {
 				return error("Unauthorized to delete this post");
 			}
 
-			if (post.images && post.images.length > 0) {
-				for (const image of post.images) {
-					await fs.promises.unlink(
-						path.join(__dirname, "../../media", image.filename)
-					);
+			if (post.post_app_post_images && post.post_app_post_images.length > 0) {
+				for (const postImage of post.post_app_post_images) {
+					const image = postImage.post_app_image;
+					if (image) {
+						await fs.promises.unlink(
+							path.join(__dirname, "../../media", image.filename)
+						);
+					}
 				}
 			}
 
 			const deletedPost = await userPostRepository.deletePost(
-				userId,
+				profileId,
 				postId
 			);
 			return success(deletedPost);
@@ -85,8 +86,8 @@ export const userPostService = {
 	},
 
 	updatePost: async function (
-		userId: number,
-		postId: number,
+		profileId: bigint,
+		postId: bigint,
 		data: UpdateUserPost,
 		images: string[]
 	): Promise<Result<UserPostWithoutIncludes>> {
@@ -96,7 +97,7 @@ export const userPostService = {
 				return error("Post not found");
 			}
 
-			if (existingPost.authorId !== userId) {
+			if (existingPost.author_id !== profileId) {
 				return error("Unauthorized to update this post");
 			}
 
@@ -105,17 +106,9 @@ export const userPostService = {
 			);
 
 			const updatedPost = await userPostRepository.updatePost(
-				userId,
+				profileId,
 				postId,
-				{
-					...data,
-					images: {
-						create: newImages.map((img) => ({
-							filename: img.filename,
-							file: img.file,
-						})),
-					},
-				},
+				data,
 				newImages
 			);
 
@@ -130,7 +123,7 @@ export const userPostService = {
 		}
 	},
 
-	getPostById: async function (id: number): Promise<Result<UserPost>> {
+	getPostById: async function (id: bigint): Promise<Result<UserPost>> {
 		try {
 			const post = await userPostRepository.getPostById(id);
 			if (!post) {
@@ -153,9 +146,9 @@ export const userPostService = {
 			return error("getAllPosts error");
 		}
 	},
-	getMyPosts: async function (id: number): Promise<Result<UserPost[]>> {
+	getMyPosts: async function (profileId: bigint): Promise<Result<UserPost[]>> {
 		try {
-			const myPosts = await userPostRepository.getMyPosts(id);
+			const myPosts = await userPostRepository.getMyPosts(profileId);
 			return success(myPosts);
 		} catch (err) {
 			console.log(err);

@@ -1,64 +1,47 @@
 import { Prisma } from "../generated/prisma";
 
-export type CreateUserPost = Prisma.PostGetPayload<{
-    include: {
-        links: true,
-        tags: true,
-    }
-    omit: {
-        id: true
-        userId: true,
-    }
-}>
 
-export type ImageCreateMany = Prisma.ImageCreateManyInput
 
-export type UserPost = Prisma.PostGetPayload<{
+export type CreateUserPost = {
+    title: string;
+    content: string;
+    topic: string;
+    tags?: Array<string | { name: string }>;
+};
+
+export type ImageCreateMany = {
+    filename: string;
+    file: string;
+    uploaded_at: Date;
+}[];
+
+export type UserPost = Prisma.post_app_postGetPayload<{
     include: {
-        tags: true,
-        topic: true,
-        links: true,
-        images: true,
-        author: {
-            omit: {
-                password: true,
-                email: true,
-            },
+        post_app_post_tags: {
+            include: { post_app_tag: true }
+        },
+        post_app_link: true,
+        post_app_post_images: {
+            include: { post_app_image: true }
+        },
+        user_app_profile: {
             include: {
-                Profile: {
-                    include: {
-                        avatars: {
-                            include: {
-                                image: true
-                            }
-                        }
-                    }
-                }
+                user_app_avatar: true
             }
         }
-        // userId: number;  
-    },
-    omit: {
-        authorId: true,
     }
-}>
+}>;
 
 export type UpdateUserPost = {
     title?: string;
     content?: string;
-    images?: {
-        create?: {
-            filename: string;
-            file: string;
-            userId?: number;
-        }[];
-    };
+    topic?: string;
+    // images handled separately
 };
-export type UserPostWithoutIncludes = Prisma.PostGetPayload<{}>
 
-//export type UpdateUserPost = Prisma.PostUpdateInput;
+export type UserPostWithoutIncludes = Prisma.post_app_postGetPayload<{}>;
 
-export type CreateImage = Prisma.ImageCreateInput
-export type Tag = Prisma.TagGetPayload<{}>;
-export type CreateTag = Prisma.TagCreateInput;
-export type Image = Prisma.ImageGetPayload<{}>
+export type CreateImage = Prisma.post_app_imageCreateInput;
+export type Tag = Prisma.post_app_tagGetPayload<{}>;
+export type CreateTag = Prisma.post_app_tagCreateInput;
+export type Image = Prisma.post_app_imageGetPayload<{}>;

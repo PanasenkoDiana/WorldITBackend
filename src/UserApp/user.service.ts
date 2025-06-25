@@ -1,249 +1,79 @@
-// user.service.ts
-import {
-  changeUserPartOne,
-  changeUserPartTwo,
-  createMyPhoto,
-  CreateUser,
-  IError,
-  ISuccess,
-  secondRegister,
-  User,
-  UserWithoutIncludes,
-  Avatar,
-} from "./user.type";
 import { UserRepositories } from "./user.repository";
-import { sign } from "jsonwebtoken";
+import { CreateUser, UpdateUser, secondRegister } from "./user.type";
 import { compare, hash } from "bcryptjs";
+import { sign } from "jsonwebtoken";
 import { SECRET_KEY } from "../config/token";
-import { EmailService } from "../core/email.service";
 import { VerificationService } from "../core/verification.service";
-import { base64ToImage } from "../tools/base64ToImage";
+import { EmailService } from "../core/email.service";
 
 const verificationService = new VerificationService(EmailService);
 
 export const UserService = {
-  createUser: async function (
-    data: CreateUser
-  ): Promise<IError | ISuccess<string>> {
-    const existingUserByEmail = await UserRepositories.findUserByEmail(
-      data.email
-    );
-    if (existingUserByEmail) {
-      return {
-        status: "error",
-        message: "User with this email already exists",
-      };
-    }
+  startRegister: async (data: CreateUser) => {
+    const existingUser = await UserRepositories.findUserByEmail(data.email);
+    if (existingUser) throw new Error("User with this email already exists");
 
-    const emailSent = await verificationService.generateAndSendCode(
-      data.email,
-      data
-    );
-    if (!emailSent) {
-      return {
-        status: "error",
-        message: "Failed to send verification email",
-      };
-    }
+    const sent = await verificationService.generateAndSendCode(data.email, data);
+    if (!sent) throw new Error("Failed to send verification email");
 
-    return { status: "success", data: "Verification code sent" };
+    return "Verification code sent to email";
   },
 
-  findUserByEmail: async function (
-    email: string
-  ): Promise<IError | ISuccess<User | null>> {
-    const user = await UserRepositories.findUserByEmail(email);
-    if (!user) {
-      return { status: "error", message: "User not found" };
-    }
-    return { status: "success", data: user };
-  },
-
-  authUser: async function (
-    email: string,
-    password: string
-  ): Promise<IError | ISuccess<string>> {
-    const user = await UserRepositories.findUserByEmail(email);
-    if (!user) {
-      return { status: "error", message: "User not found" };
-    }
-
-    const isMatch = await compare(password, user.password);
-    if (!isMatch) {
-      return { status: "error", message: "Incorrect password" };
-    }
-
-    const token = sign({ id: user.id }, SECRET_KEY, { expiresIn: "1d" });
-    return { status: "success", data: token };
-  },
-
-  findUserById: async function (
-    id: number
-  ): Promise<IError | ISuccess<UserWithoutIncludes>> {
-    const user = await UserRepositories.findUserById(id);
-    if (!user) {
-      return { status: "error", message: "User not found" };
-    }
-    return { status: "success", data: user };
-  },
-
-  verifyUser: async function (
-    email: string,
-    code: string
-  ): Promise<IError | ISuccess<string>> {
-    const userData = await verificationService.verifyCode(email, code);
-    if (!userData) {
-      return {
-        status: "error",
-        message: "Invalid or expired verification code",
-      };
-    }
+  confirmRegister: async (email: string, code: string) => {
+    const userData = verificationService.verifyCode(email, code);
+    if (!userData) throw new Error("Invalid or expired verification code");
 
     const hashedPassword = await hash(userData.password, 10);
-    const newUser = await UserRepositories.createUser({
+    const user = await UserRepositories.createUser({
       ...userData,
       password: hashedPassword,
     });
-    if (!newUser) {
-      return { status: "error", message: "Failed to create user" };
-    }
 
-    const token = sign({ id: newUser.id }, SECRET_KEY, { expiresIn: "1d" });
-    return { status: "success", data: token };
+    return user;
   },
 
-  secondRegister: async function (
-    data: secondRegister,
-    id: number
-  ): Promise<IError | ISuccess<User>> {
-    const user = await UserRepositories.secondRegister(data, id);
-    if (!user) {
-      return { status: "error", message: "User not found" };
-    }
-
-    return { status: "success", data: user };
+  findUserById: async (id: number) => {
+    const user = await UserRepositories.findUserById(id);
+    if (!user) throw new Error("User not found");
+    return user;
   },
 
-  changeUserPartOne: async function (
-    data: changeUserPartOne,
-    id: number
-  ): Promise<IError | ISuccess<string>> {
-    if (data.profileImage) {
-      if (!data.profileImage.startsWith("data:image")) {
-        return { status: "error", message: "Invalid image data" };
-      }
-      const { filename } = await base64ToImage(data.profileImage);
-      const result = await UserRepositories.changeUserPartOne(filename, id);
-      if (!result) return { status: "error", message: "User not found" };
-    }
-
-    if (data.username) {
-      const result = await UserRepositories.changeUsername(id, data.username);
-      if (!result) return { status: "error", message: "User not found" };
-    }
-
-    return { status: "success", data: "changed user" };
+  findUserByEmail: async (email: string) => {
+    const user = await UserRepositories.findUserByEmail(email);
+    if (!user) throw new Error("User not found");
+    return user;
   },
 
-  changeUserPartTwo: async function (
-    data: changeUserPartTwo,
-    id: number
-  ): Promise<IError | ISuccess<string>> {
-    if (data.password) {
-      data.password = await hash(data.password, 10);
-    }
+  authUser: async (email: string, password: string) => {
+    const user = await UserRepositories.findUserByEmail(email);
+    if (!user || !user.password) throw new Error("User not found or no password set");
 
-    const result = await UserRepositories.changeUserPartTwo(data, id);
-    if (!result) {
-      return { status: "error", message: "User not found" };
-    }
+    const valid = await compare(password, user.password);
+    if (!valid) throw new Error("Invalid credentials");
 
-    return { status: "success", data: result };
+    return sign({ id: user.id }, SECRET_KEY, { expiresIn: "1d" });
   },
 
-  addMyPhoto: async function (
-    data: createMyPhoto,
-    id: number
-  ): Promise<IError | ISuccess<string>> {
-    if (!data.image.startsWith("data:image")) {
-      return { status: "error", message: "image not in format" };
-    }
-    const { filename } = await base64ToImage(data.image);
-    if (!filename) {
-      return { status: "error", message: "Invalid image data" };
-    }
+  secondRegister: async (data: secondRegister, id: number) =>
+    UserRepositories.secondRegister(data, id),
 
-    const result = await UserRepositories.addMyPhoto(filename, id);
-    if (!result) {
-      return { status: "error", message: "photo not created" };
-    }
+  changeUserPartOne: async (filename: string, id: number) =>
+    UserRepositories.changeUserPartOne(filename, id),
 
-    return { status: "success", data: result };
+  changeUserPartTwo: async (data: UpdateUser, id: number) =>
+    UserRepositories.changeUserPartTwo(data, id),
+
+  addMyPhoto: async (filename: string, id: number) =>
+    UserRepositories.addMyPhoto(filename, id),
+
+  deleteMyPhoto: async (id: number) =>
+    UserRepositories.deleteMyPhoto(id),
+
+  changePassword: async (password: string, userId: number) => {
+    await UserRepositories.changePassword(password, userId);
+    return "Password changed";
   },
 
-  deleteMyPhoto: async function (
-    id: number
-  ): Promise<IError | ISuccess<string>> {
-    const result = await UserRepositories.deleteMyPhoto(id);
-    if (!result) {
-      return { status: "error", message: "photo not found" };
-    }
-    return { status: "success", data: result };
-  },
-
-  changePasswordPartOne: async function (
-    userId: number
-  ): Promise<IError | ISuccess<string>> {
-    const user = await UserRepositories.findUserById(userId);
-    if (!user) {
-      return { status: "error", message: "user not found" };
-    }
-
-    const emailSent = await verificationService.generateAndSendCode(
-      user.email,
-      user
-    );
-    if (!emailSent) {
-      return { status: "error", message: "Failed to send verification email" };
-    }
-
-    return { status: "success", data: "Verification code sent" };
-  },
-
-  changePasswordPartTwo: async function (
-    code: string,
-    userId: number,
-    password: string
-  ): Promise<IError | ISuccess<string>> {
-    const user = await UserRepositories.findUserById(userId);
-    if (!user) {
-      return { status: "error", message: "user not found" };
-    }
-
-    const userData = await verificationService.verifyCode(user.email, code);
-    if (!userData) {
-      return { status: "error", message: "Invalid or expired verification code" };
-    }
-
-    const hashedPassword = await hash(password, 10);
-    await UserRepositories.changePassword(hashedPassword, userId);
-
-    return { status: "success", data: "Password changed successfully" };
-  },
-
-  getMyPhotos: async function (
-    userId: number
-  ): Promise<ISuccess<Avatar[]> | IError> {
-    const user = await UserRepositories.findUserById(userId);
-    if (!user) {
-      return { status: "error", message: "user not found" };
-    }
-
-    const userAvatars = user.Profile?.avatars;
-    if (!userAvatars) {
-      return { status: "error", message: "avatars not found" };
-    }
-
-    return { status: "success", data: userAvatars };
-  },
+  changeUsername: async (userId: number, username: string) =>
+    UserRepositories.changeUsername(userId, username),
 };

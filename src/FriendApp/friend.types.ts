@@ -1,67 +1,68 @@
 import { Prisma } from "../generated/prisma";
 
 export type IUser = Prisma.UserGetPayload<{
-	select: {
-		id: true;
-		name: true;
-		surname: true;
-		username: true;
-		Profile: {
-			include: {
-				avatars: {
-					include: {
-						image: true;
-					}
-				}
-			}
-		}
-	};
+  select: {
+    id: true;
+    first_name: true;
+    last_name: true;
+    username: true;
+    user_app_profile: {
+      include: {
+        user_app_avatar: {
+          select: {
+            image: true;
+            active: true;
+            shown: true;
+          };
+        };
+      };
+    };
+  };
 }>;
 
 export interface IGetRequest {
-	status: "pending";
-	from: IUser;
+  status: "pending";
+  from: IUser;
 }
 
 export interface IGetMyRequest {
-	status: "pending";
-	to: IUser;
+  status: "pending";
+  to: IUser;
 }
 
 export interface ICreateFriendRequest {
-	fromId: number;
-	toUsername: string;
+  profile1_id: bigint; 
+  toUsername: string;
 }
 
 export interface IAcceptFriendRequest {
-	fromUsername: string;
-	toId: number;
+  fromUsername: string;
+  profile2_id: bigint; 
 }
 
 export interface ICancelFriendRequest {
-	myId: number;
-	username: string,
-	isIncoming: boolean
+    username: string;
+    profile1_id: bigint; 
+    isIncoming: boolean;
 }
 
 export interface IDeleteFriend {
-	myId: number;
-	username: string,
+    profile1_id: bigint; 
+    username: string;
 }
 
 export interface ICancelFriendRequestWithoutId {
-	username: string,
-	isIncoming: boolean
+  username: string;
+  isIncoming: boolean;
 }
 
-export type IFriendRequest = Prisma.FriendRequestGetPayload<{
-	select: {
-		fromId: true,
-		toId: true,
-		status: true
-	}
+export type IFriendRequest = Prisma.user_app_friendshipGetPayload<{
+  select: {
+    profile1_id: true; 
+    profile2_id: true;
+    accepted: true;  
+  };
 }>;
 
-export type ICanceledRequest = { status: "canceled" }
-
-export type IDeletedFriend = { status: "deleted" }
+export type ICanceledRequest = { status: "canceled" };
+export type IDeletedFriend = { status: "deleted" };

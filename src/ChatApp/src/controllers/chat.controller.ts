@@ -4,6 +4,7 @@ import { base64ToImage } from "../../../tools/base64ToImage";
 import { CreateGroup } from "../types";
 
 export class ChatController {
+	
 	public sendMessage = async (req: Request, res: Response): Promise<void> => {
 		try {
 			const { content, chatGroupId } = req.body;
@@ -14,33 +15,32 @@ export class ChatController {
 				return;
 			}
 
-			const chatGroup = await prismaClient.chatGroup.findFirst({
+			const chatGroup = await prismaClient.chat_app_chatgroup.findFirst({
 				where: {
-					id: parseInt(chatGroupId),
-					members: {
+					id: BigInt(chatGroupId),
+					chat_app_chatgroup_members: {
 						some: {
-							id: parseInt(authorId),
+							profile_id: BigInt(authorId),
 						},
 					},
 				},
 			});
 
 			if (!chatGroup) {
-				res.status(404).json({
-					error: "Chat group not found or access denied",
-				});
+				res.status(404).json({ error: "Chat group not found or access denied" });
 				return;
 			}
 
-			const message = await prismaClient.chatMessage.create({
+			const message = await prismaClient.chat_app_chatmessage.create({
 				data: {
 					content,
-					authorId: parseInt(authorId),
-					chatGroupId: parseInt(chatGroupId),
+					author_id: BigInt(authorId),
+					chat_group_id: BigInt(chatGroupId),
+					sent_at: new Date(),
 				},
 				include: {
-					author: true,
-					chat_group: true,
+					user_app_profile: true,
+					chat_app_chatgroup: true,
 				},
 			});
 
@@ -49,46 +49,41 @@ export class ChatController {
 			console.error("Error sending message:", error);
 			res.status(500).json({
 				error: "Failed to send message",
-				details:
-					error instanceof Error ? error.message : "Unknown error",
+				details: error instanceof Error ? error.message : "Unknown error",
 			});
 		}
 	};
 
-	public getOrCreateChatGroup = async (
-		req: Request,
-		res: Response
-	): Promise<void> => {
+	// Получить или создать личный чат
+	public getOrCreateChatGroup = async (req: Request, res: Response): Promise<void> => {
 		try {
-			const { recipientUsername } = req.body;
+			const { recipientProfileId } = req.body;
 			const currentUserId = req.user?.id;
 
-			if (!recipientUsername || !currentUserId) {
+			if (!recipientProfileId || !currentUserId) {
 				res.status(400).json({
-					error: "Missing recipient username or user not authenticated",
+					error: "Missing recipient profile id or user not authenticated",
 				});
 				return;
 			}
 
-			const recipient = await prismaClient.user.findUnique({
-				where: { username: recipientUsername },
-			});
-
-			if (!recipient) {
-				res.status(404).json({ error: "Recipient user not found" });
-				return;
-			}
-
-			// Найти существующую группу, в которой только эти двое
-			let chatGroup = await prismaClient.chatGroup.findFirst({
+			// Найти существующую личную группу между двумя профилями
+			let chatGroup = await prismaClient.chat_app_chatgroup.findFirst({
 				where: {
+					is_personal_chat: true,
+					chat_app_chatgroup_members: {
+						some: { profile_id: BigInt(currentUserId) },
+					},
 					AND: [
-						{ members: { some: { id: currentUserId } } },
-						{ members: { some: { id: recipient.id } } },
 						{
-							members: {
+							chat_app_chatgroup_members: {
+								some: { profile_id: BigInt(recipientProfileId) },
+							},
+						},
+						{
+							chat_app_chatgroup_members: {
 								every: {
-									id: { in: [currentUserId, recipient.id] },
+									profile_id: { in: [BigInt(currentUserId), BigInt(recipientProfileId)] },
 								},
 							},
 						},
@@ -97,15 +92,15 @@ export class ChatController {
 			});
 
 			if (!chatGroup) {
-				chatGroup = await prismaClient.chatGroup.create({
+				chatGroup = await prismaClient.chat_app_chatgroup.create({
 					data: {
 						name: `chat-${Date.now()}`,
-						admin: { connect: { id: currentUserId } },
+						admin_id: BigInt(currentUserId),
 						is_personal_chat: true,
-						members: {
-							connect: [
-								{ id: currentUserId },
-								{ id: recipient.id },
+						chat_app_chatgroup_members: {
+							create: [
+								{ profile_id: BigInt(currentUserId) },
+								{ profile_id: BigInt(recipientProfileId) },
 							],
 						},
 					},
@@ -122,18 +117,16 @@ export class ChatController {
 		}
 	};
 
-	public getChatHistory = async (
-		req: Request,
-		res: Response
-	): Promise<void> => {
+	// История сообщений группы
+	public getChatHistory = async (req: Request, res: Response): Promise<void> => {
 		try {
 			const { chatId } = req.params;
-			const messages = await prismaClient.chatMessage.findMany({
+			const messages = await prismaClient.chat_app_chatmessage.findMany({
 				where: {
-					chatGroupId: parseInt(chatId),
+					chat_group_id: BigInt(chatId),
 				},
 				include: {
-					author: true,
+					user_app_profile: true,
 				},
 				orderBy: {
 					sent_at: "asc",
@@ -146,76 +139,71 @@ export class ChatController {
 		}
 	};
 
+	// Получить все групповые чаты пользователя
 	public getAllChats = async (req: Request, res: Response) => {
 		try {
-			const userId = res.locals.userId;
+			const userId = req.user?.id || res.locals.userId;
 
-			const chats = await prismaClient.chatGroup.findMany({
+			const chats = await prismaClient.chat_app_chatgroup.findMany({
 				where: {
-					members: {
+					chat_app_chatgroup_members: {
 						some: {
-							id: +userId,
+							profile_id: BigInt(userId),
 						},
 					},
 					is_personal_chat: false,
 				},
-
 				include: {
-					members: {
+					chat_app_chatgroup_members: {
 						include: {
-							Profile: {
+							user_app_profile: {
 								include: {
-									avatars: {
-										include: {
-											image: true,
-										},
+									user_app_avatar: {
+										where: { active: true },
 									},
 								},
 							},
 						},
 					},
-					messages: true,
+					chat_app_chatmessage: true,
 				},
 			});
 
 			res.json(chats);
 		} catch (error) {
-			// console.log(error)
 			res.status(500).json({ error: "Failed to fetch chats" });
 		}
 	};
 
+	// Создать новую группу
 	public createGroup = async (req: Request, res: Response) => {
 		try {
 			const userId: number = req.user.id;
 			const data: CreateGroup = req.body;
-			// console.log(data)
 
 			const avatarData = await base64ToImage(data.avatar);
-			console.log(avatarData);
 
-			const groupMembers = [
-				...data.members.map((id: number) => ({ id: id })),
-				{ id: userId },
-			];
-
-			const group = await prismaClient.chatGroup.create({
+			const group = await prismaClient.chat_app_chatgroup.create({
 				data: {
 					name: data.name,
 					avatar: avatarData.filename,
-					admin: {
-						connect: { id: userId },
-					},
-					members: {
-						connect: groupMembers,
+					admin_id: BigInt(userId),
+					is_personal_chat: false,
+					chat_app_chatgroup_members: {
+						create: [
+							...data.members.map((id: number) => ({ profile_id: BigInt(id) })),
+							{ profile_id: BigInt(userId) },
+						],
 					},
 				},
 				include: {
-					members: true,
+					chat_app_chatgroup_members: {
+						include: {
+							user_app_profile: true,
+						},
+					},
 				},
 			});
-
-			console.log(group);
 
 			res.json(group);
 		} catch (error) {

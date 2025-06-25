@@ -1,23 +1,45 @@
-// user.controller.ts
 import { Request, Response, NextFunction } from "express";
 import { UserService } from "./user.service";
 
+function serializeBigInt(obj: any): any {
+  if (obj === null || obj === undefined) return obj;
+
+  if (typeof obj === "bigint") {
+    return obj.toString();
+  }
+
+  if (Array.isArray(obj)) {
+    return obj.map(serializeBigInt);
+  }
+
+  if (typeof obj === "object") {
+    const newObj: any = {};
+    for (const key in obj) {
+      if (Object.prototype.hasOwnProperty.call(obj, key)) {
+        newObj[key] = serializeBigInt(obj[key]);
+      }
+    }
+    return newObj;
+  }
+
+  return obj;
+}
+
 export const UserController = {
-  createUser: async (req: Request, res: Response, next: NextFunction) => {
+  startRegister: async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const data = req.body;
-      const result = await UserService.createUser(data);
-      res.json(result);
+      const message = await UserService.startRegister(req.body);
+      res.json({ message });
     } catch (err) {
       next(err);
     }
   },
 
-  findUserByEmail: async (req: Request, res: Response, next: NextFunction) => {
+  confirmRegister: async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { email } = req.body;
-      const result = await UserService.findUserByEmail(email);
-      res.json(result);
+      const { email, code } = req.body;
+      const user = await UserService.confirmRegister(email, code);
+      res.json(serializeBigInt(user));
     } catch (err) {
       next(err);
     }
@@ -26,8 +48,8 @@ export const UserController = {
   authUser: async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { email, password } = req.body;
-      const result = await UserService.authUser(email, password);
-      res.json(result);
+      const token = await UserService.authUser(email, password);
+      res.json({ token });
     } catch (err) {
       next(err);
     }
@@ -36,18 +58,8 @@ export const UserController = {
   findUserById: async (req: Request, res: Response, next: NextFunction) => {
     try {
       const id = res.locals.userId;
-      const result = await UserService.findUserById(id);
-      res.json(result);
-    } catch (err) {
-      next(err);
-    }
-  },
-
-  verifyUser: async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const { email, code } = req.body;
-      const result = await UserService.verifyUser(email, code);
-      res.json(result);
+      const user = await UserService.findUserById(id);
+      res.json(serializeBigInt(user));
     } catch (err) {
       next(err);
     }
@@ -56,9 +68,8 @@ export const UserController = {
   secondRegister: async (req: Request, res: Response, next: NextFunction) => {
     try {
       const id = +req.params.id;
-      const data = req.body;
-      const result = await UserService.secondRegister(data, id);
-      res.json(result);
+      const updatedUser = await UserService.secondRegister(req.body, id);
+      res.json(serializeBigInt(updatedUser));
     } catch (err) {
       next(err);
     }
@@ -69,7 +80,7 @@ export const UserController = {
       const id = res.locals.userId;
       const { filename } = req.body;
       const result = await UserService.changeUserPartOne(filename, id);
-      res.json(result);
+      res.json({ message: result });
     } catch (err) {
       next(err);
     }
@@ -78,9 +89,8 @@ export const UserController = {
   changeUserPartTwo: async (req: Request, res: Response, next: NextFunction) => {
     try {
       const id = res.locals.userId;
-      const data = req.body;
-      const result = await UserService.changeUserPartTwo(data, id);
-      res.json(result);
+      const result = await UserService.changeUserPartTwo(req.body, id);
+      res.json(serializeBigInt(result));
     } catch (err) {
       next(err);
     }
@@ -91,7 +101,7 @@ export const UserController = {
       const id = res.locals.userId;
       const { filename } = req.body;
       const result = await UserService.addMyPhoto(filename, id);
-      res.json(result);
+      res.json({ message: result });
     } catch (err) {
       next(err);
     }
@@ -100,49 +110,30 @@ export const UserController = {
   deleteMyPhoto: async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.body;
-      const result = await UserService.deleteMyPhoto(id);
-      res.json(result);
+      const filename = await UserService.deleteMyPhoto(id);
+      res.json({ deletedFilename: filename });
     } catch (err) {
       next(err);
     }
   },
 
-  changePasswordPartOne: async (req: Request, res: Response, next: NextFunction) => {
+  changePassword: async (req: Request, res: Response, next: NextFunction) => {
     try {
       const id = res.locals.userId;
-      const result = await UserService.changePasswordPartOne(id);
-      res.json(result);
+      const { password } = req.body;
+      await UserService.changePassword(password, id);
+      res.json({ message: "Password changed" });
     } catch (err) {
       next(err);
     }
   },
 
-  changePasswordPartTwo: async (req: Request, res: Response, next: NextFunction) => {
+  changeUsername: async (req: Request, res: Response, next: NextFunction) => {
     try {
       const id = res.locals.userId;
-      const { code, password } = req.body;
-      const result = await UserService.changePasswordPartTwo(code, id, password);
-      res.json(result);
-    } catch (err) {
-      next(err);
-    }
-  },
-
-  getMyPhotos: async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const id = res.locals.userId;
-      const result = await UserService.getMyPhotos(id);
-      res.json(result);
-    } catch (err) {
-      next(err);
-    }
-  },
-
-  getRecipient: async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const { id } = req.body;
-      const result = await UserService.findUserById(id);
-      res.json(result);
+      const { username } = req.body;
+      const result = await UserService.changeUsername(id, username);
+      res.json({ message: result });
     } catch (err) {
       next(err);
     }

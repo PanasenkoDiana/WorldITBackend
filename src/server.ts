@@ -33,7 +33,7 @@ const startServer = async () => {
 			},
 		});
 
-		const HOST = "192.168.0.114";
+		const HOST = "192.168.3.4";
 		const PORT = 8000;
 
 		chatSocket(io);

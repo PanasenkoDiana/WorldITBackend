@@ -1,25 +1,29 @@
 import { Prisma } from "../generated/prisma";
 
+export type Image = Prisma.post_app_imageGetPayload<{}>;
 
-
-
-
-type Image = Prisma.ImageGetPayload<{}>
-export type Album = Prisma.AlbumGetPayload<{
-	include: { topic: true, images: true }
-}>
+export type Album = Prisma.post_app_albumGetPayload<{
+  include: {
+    post_app_tag: true;
+    post_app_album_images: {
+      include: {
+        post_app_image: true;
+      };
+    };
+  };
+}>;
 
 export type CreateAlbumInput = {
-	name: string;
-	userId: number;
-	topic?: string | { name: string }
-	// previewImageId?: number;
-	// shown?: boolean;
+  name: string;
+  author_id: bigint;
+  topic?: string | { name: string };
 };
 
-export type CreateAlbum = Omit<Prisma.AlbumCreateInput, 'images'>
-// export type CreateAlbum =
-export type AddPhotoToAlbum = Pick<Image, 'filename' | 'file'>
-export type AddPhotoToAlbumCredentials = { image: string }
+export type CreateAlbum = Omit<
+  Prisma.post_app_albumCreateInput,
+  "post_app_album_images"
+>;
 
-// export type ChangeAlbum
+export type AddPhotoToAlbum = Pick<Image, "filename" | "file">;
+
+export type AddPhotoToAlbumCredentials = { image: string };

@@ -1,7 +1,0 @@
-model Tag {
-  id   Int    @id @default(autoincrement())
-  name String @unique
-
-  posts  Post[]  @relation("PostTags")
-  albums Album[]
-}

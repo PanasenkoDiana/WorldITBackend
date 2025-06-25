@@ -5,7 +5,7 @@ import { success, error } from "../tools/result";
 
 export const tagService = {
     findOrCreate: async function (data: TagWithoutId) {
-        const tag = await tagRepository.findTagByNane(data.name)
+        const tag = await tagRepository.findTagByName(data.name)
         if (tag) {
             return success<Tag>(tag)
         }

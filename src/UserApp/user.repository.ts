@@ -1,194 +1,153 @@
-// user.repository.ts
 import { prismaClient } from "../prisma/client";
-import { changeUserPartTwo, CreateUser, secondRegister } from "./user.type";
+import { CreateUser, secondRegister, UpdateUser } from "./user.type";
 
 export const UserRepositories = {
-	createUser: async (data: CreateUser) => {
-		const existingUser = await prismaClient.user.findUnique({
-			where: { email: data.email },
-		});
-		if (existingUser) {
-			throw new Error("Email already in use");
-		}
+  createUser: async (data: CreateUser) => {
+    if (!data.email) throw new Error("Email is required");
 
-		const count = await prismaClient.user.count();
-		const username = `user${count + 1}`;
+    const existingUser = await prismaClient.user.findFirst({
+      where: { email: data.email },
+    });
 
-		const user = await prismaClient.user.create({
-			data: {
-				username,
-				...data,
-			},
-		});
+    if (existingUser) throw new Error("Email already in use");
 
-		await prismaClient.profile.create({
-			data: {
-				user: { connect: { id: user.id } },
-				date_of_birth: new Date(),
-			},
-		});
+    const count = await prismaClient.user.count();
+    const username = `user${count + 1}`;
 
-		return user;
-	},
+    const user = await prismaClient.user.create({
+      data: {
+        username,
+        email: data.email,
+        password: data.password,
+        first_name: data.first_name || "",
+        last_name: data.last_name || "",
+        is_superuser: false,
+        is_staff: false,
+        is_active: true,
+        date_joined: new Date(),
+        last_login: null,
+      },
+    });
 
-	findUserById: async (id: number) =>
-		prismaClient.user.findUnique({
-			where: { id },
-			include: {
-				images: true,
-				albums: { include: { images: true } },
-				Profile: {
-					include: {
-						avatars: {
-							include: {
-								image: true,
-							},
-						},
-					},
-				},
-			},
-		}),
+    await prismaClient.user_app_profile.create({
+      data: {
+        user_id: user.id,
+        date_of_birth: new Date("1970-01-01"),
+      },
+    });
 
-	findUserByEmail: async (email: string) =>
-		prismaClient.user.findUnique({
-			where: { email },
-			include: {
-				images: true,
-				albums: { include: { images: true } },
-				Profile: {
-					include: {
-						avatars: {
-							include: {
-								image: true,
-							},
-						},
-					},
-				},
-			},
-		}),
+    return user;
+  },
 
-	secondRegister: async (data: secondRegister, id: number) =>
-		prismaClient.user.update({
-			where: { id },
-			data: {
-				name: data.name,
-				surname: data.surname,
-				username: data.username,
-			},
-			include: { images: true, albums: true },
-		}),
+  findUserById: async (id: number) => {
+    return prismaClient.user.findUnique({
+      where: { id },
+      include: { user_app_profile: true },
+    });
+  },
 
-	changeUserPartOne: async (filename: string, id: number) => {
-		const profile = await prismaClient.profile.findUnique({
-			where: { user_id: id },
-		});
-		if (!profile) throw new Error("Profile not found");
+  findUserByEmail: async (email: string) => {
+    if (!email) return null;
 
-		await prismaClient.profile.update({
-			where: { id: profile.id },
-			data: {
-				avatars: {
-					create: {
-						image: {
-							create: {
-								filename,
-								file: filename,
-							},
-						},
-					},
-				},
-			},
-		});
+    try {
+      const user = await prismaClient.user.findFirst({
+        where: { email },
+        include: { user_app_profile: true },
+      });
 
-		return "avatar changed";
-	},
+      return user || null;
+    } catch (error) {
+      console.error("Error in findUserByEmail:", error);
+      return null;
+    }
+  },
 
-	changeUserPartTwo: async (data: changeUserPartTwo, id: number) => {
-		await prismaClient.user.update({
-			where: { id },
-			data: {
-				name: data.name,
-				surname: data.surname,
-				email: data.email,
-				username: data.username,
-				password: data.password,
-			},
-			include: {
-				albums: true,
-				Profile: {
-					include: {
-						avatars: {
-							include: {
-								image: true,
-							},
-						},
-					},
-				},
-			},
-		});
+  secondRegister: async (data: secondRegister, id: number) => {
+    return prismaClient.user.update({
+      where: { id },
+      data: {
+        first_name: data.name,
+        last_name: data.surname,
+        username: data.username,
+      },
+    });
+  },
 
-		return "changed part two";
-	},
+  changeUserPartOne: async (filename: string, id: number) => {
+    const profile = await prismaClient.user_app_profile.findUnique({
+      where: { user_id: id },
+    });
 
-	addMyPhoto: async (filename: string, id: number) => {
-		const profile = await prismaClient.profile.findUnique({
-			where: { user_id: id },
-		});
-		if (!profile) throw new Error("Profile not found");
+    if (!profile) throw new Error("Profile not found");
 
-		await prismaClient.profile.update({
-			where: { user_id: id },
-			data: {
-				avatars: {
-					create: {
-						image: {
-							create: {
-								filename,
-								file: filename,
-							},
-						},
-					},
-				},
-			},
-			include: {
-				avatars: {
-					include: {
-						image: true,
-					},
-				},
-			},
-		});
+    await prismaClient.user_app_avatar.create({
+      data: {
+        profile_id: profile.id,
+        image: filename,
+        active: true,
+        shown: true,
+      },
+    });
 
-		return "new photo added";
-	},
+    return "avatar changed";
+  },
 
-	deleteMyPhoto: async (id: number) => {
-		const avatar = await prismaClient.avatar.findUnique({
-			where: { id },
-			include: { image: true },
-		});
-		if (!avatar) throw new Error("Avatar not found");
+  changeUserPartTwo: async (data: UpdateUser, id: number) => {
+    const updatedUser = await prismaClient.user.update({
+      where: { id },
+      data: {
+        first_name: data.first_name,
+        last_name: data.last_name,
+        email: data.email,
+        username: data.username,
+        password: data.password,
+      },
+      include: { user_app_profile: true },
+    });
 
-		await prismaClient.avatar.delete({
-			where: { id },
-		});
+    return updatedUser;
+  },
 
-		return avatar.image.filename;
-	},
+  addMyPhoto: async (filename: string, id: number) => {
+    const profile = await prismaClient.user_app_profile.findUnique({
+      where: { user_id: id },
+    });
 
-	changePassword: async (password: string, userId: number) => {
-		await prismaClient.user.update({
-			where: { id: userId },
-			data: { password },
-		});
-	},
+    if (!profile) throw new Error("Profile not found");
 
-	changeUsername: async (userId: number, username: string) => {
-		await prismaClient.user.update({
-			where: { id: userId },
-			data: { username },
-		});
+    await prismaClient.user_app_avatar.create({
+      data: {
+        profile_id: profile.id,
+        image: filename,
+        active: false,
+        shown: true,
+      },
+    });
 
-		return "username changed";
-	},
+    return "new photo added";
+  },
+
+  deleteMyPhoto: async (id: number) => {
+    const avatar = await prismaClient.user_app_avatar.findUnique({ where: { id } });
+    if (!avatar) throw new Error("Avatar not found");
+
+    await prismaClient.user_app_avatar.delete({ where: { id } });
+    return avatar.image;
+  },
+
+  changePassword: async (password: string, userId: number) => {
+    await prismaClient.user.update({
+      where: { id: userId },
+      data: { password },
+    });
+  },
+
+  changeUsername: async (userId: number, username: string) => {
+    await prismaClient.user.update({
+      where: { id: userId },
+      data: { username },
+    });
+
+    return "username changed";
+  },
 };

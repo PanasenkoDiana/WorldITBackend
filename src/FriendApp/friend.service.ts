@@ -14,7 +14,7 @@ import {
 } from "./friend.types";
 
 export const friendService = {
-	getAllFriends: async function (id: number): Promise<Result<IUser[]>> {
+	getAllFriends: async function (id: bigint): Promise<Result<IUser[]>> {
 		try {
 			const friends = await friendRepository.getAllFriends(id);
 			return success(friends);
@@ -24,7 +24,7 @@ export const friendService = {
 			throw err;
 		}
 	},
-	getRecommends: async function (id: number): Promise<Result<IUser[]>> {
+	getRecommends: async function (id: bigint): Promise<Result<IUser[]>> {
 		try {
 			const users = await friendRepository.getRecommends(id);
 			return success(users);
@@ -34,7 +34,7 @@ export const friendService = {
 			throw err;
 		}
 	},
-	getRequests: async function (id: number): Promise<Result<IGetRequest[]>> {
+	getRequests: async function (id: bigint): Promise<Result<IGetRequest[]>> {
 		try {
 			const friendRequests = await friendRepository.getRequests(id);
 			return success(friendRequests);
@@ -45,7 +45,7 @@ export const friendService = {
 		}
 	},
 	getMyRequests: async function (
-		id: number
+		id: bigint
 	): Promise<Result<IGetMyRequest[]>> {
 		try {
 			const friendRequests = await friendRepository.getMyRequests(id);
@@ -61,7 +61,7 @@ export const friendService = {
 	): Promise<Result<IFriendRequest>> {
 		try {
 			const friendRequest = await friendRepository.sendRequest({
-				fromId: data.fromId,
+				profile1_id: data.profile1_id,
 				toUsername: data.toUsername,
 			});
 			return success(friendRequest);
@@ -77,7 +77,7 @@ export const friendService = {
 		try {
 			const friendRequest = await friendRepository.acceptRequest({
 				fromUsername: data.fromUsername,
-				toId: data.toId
+				profile2_id: data.profile2_id
 			});
 			return success(friendRequest);
 		} catch (err) {
