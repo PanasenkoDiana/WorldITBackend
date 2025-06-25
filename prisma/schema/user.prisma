@@ -1,0 +1,71 @@
+model User {
+  id       Int     @id @default(autoincrement())
+  email    String  @unique
+  password String
+  name     String?
+  surname  String?
+  username String? @unique
+
+  images Image[]
+  albums Album[]
+
+  posts_authored Post[] @relation("PostsAuthored")
+
+  sentRequests     FriendRequest[] @relation("SentRequests")
+  receivedRequests FriendRequest[] @relation("ReceivedRequests")
+
+  last_login   DateTime?
+  is_staff     Boolean   @default(false)
+  is_active    Boolean   @default(true)
+  is_superuser Boolean   @default(false)
+  date_joined  DateTime  @default(now())
+
+  groups           UserGroup[]
+  user_permissions UserPermission[]
+  Profile          Profile?
+
+  ChatGroup      ChatGroup[]   @relation("Members")
+  ChatMessage    ChatMessage[]
+  AdminChatGroup ChatGroup[]   @relation("AdminGroup")
+
+  @@map("auth_user")
+}
+
+model Group {
+  id    Int         @id @default(autoincrement())
+  name  String      @unique
+  users UserGroup[]
+
+  @@map("auth_group")
+}
+
+model Permission {
+  id       Int              @id @default(autoincrement())
+  name     String
+  codename String
+  users    UserPermission[]
+
+  @@map("auth_permission")
+}
+
+model UserGroup {
+  id       Int   @id @default(autoincrement())
+  user     User  @relation(fields: [user_id], references: [id])
+  user_id  Int
+  group    Group @relation(fields: [group_id], references: [id])
+  group_id Int
+
+  @@unique([user_id, group_id])
+  @@map("auth_user_groups")
+}
+
+model UserPermission {
+  id            Int        @id @default(autoincrement())
+  user          User       @relation(fields: [user_id], references: [id])
+  user_id       Int
+  permission    Permission @relation(fields: [permission_id], references: [id])
+  permission_id Int
+
+  @@unique([user_id, permission_id])
+  @@map("auth_user_user_permissions")
+}

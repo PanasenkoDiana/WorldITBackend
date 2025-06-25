@@ -1,0 +1,11 @@
+/node_modules/
+package-lock.json
+.env
+db/
+migrations/
+.vscode
+./meedia
+/media/
+media
+/media
+/src/middlewares

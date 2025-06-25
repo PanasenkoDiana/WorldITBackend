@@ -1,0 +1,234 @@
+model Post {
+  id      Int     @id @default(autoincrement())
+  title   String
+  content String?
+  topic   String?
+
+  authorId Int
+  author   User @relation("PostsAuthored", fields: [authorId], references: [id])
+
+  images Image[]   @relation("PostImages")
+  views  Profile[] @relation("PostViews")
+  likes  Profile[] @relation("PostLikes")
+  tags   Tag[]     @relation("PostTags")
+  links  Link[]
+}
+
+model Album {
+  id        Int      @id @default(autoincrement())
+  name      String
+  createdAt DateTime @default(now())
+
+  previewImageId Int?   @unique
+  previewImage   Image? @relation("PreviewImage", fields: [previewImageId], references: [id])
+
+  shown Boolean @default(true)
+
+  topicId Int?
+  topic   Tag? @relation(fields: [topicId], references: [id])
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id])
+
+  images Image[] @relation("AlbumImages")
+}
+
+model Avatar {
+  id Int @id @default(autoincrement())
+
+  image      Image   @relation("AvatarImages", fields: [imageId], references: [id])
+  imageId    Int     @unique
+  profile    Profile @relation(fields: [profile_id], references: [id])
+  profile_id Int
+  active     Boolean @default(true)
+  shown      Boolean @default(true)
+
+  @@map("app_avatar")
+}
+
+model ChatGroup {
+  id               Int     @id @default(autoincrement())
+  name             String
+  is_personal_chat Boolean @default(false)
+
+  adminId Int
+  admin   User @relation("AdminGroup", fields: [adminId], references: [id])
+
+  members User[]  @relation("Members")
+  avatar  String?
+
+  messages ChatMessage[]
+
+  @@map("chat_group")
+}
+
+model ChatMessage {
+  id      Int    @id @default(autoincrement())
+  content String
+
+  authorId Int
+  author   User @relation(fields: [authorId], references: [id])
+
+  chatGroupId Int
+  chat_group  ChatGroup @relation(fields: [chatGroupId], references: [id])
+
+  sent_at        DateTime @default(now())
+  attached_image String?
+
+  @@map("chat_message")
+}
+
+model FriendRequest {
+  id     Int                 @id @default(autoincrement())
+  from   User                @relation("SentRequests", fields: [fromId], references: [id])
+  fromId Int
+  to     User                @relation("ReceivedRequests", fields: [toId], references: [id])
+  toId   Int
+  status FriendRequestStatus
+
+  @@unique([fromId, toId])
+}
+
+enum FriendRequestStatus {
+  accepted
+  pending
+}
+
+model Image {
+  id         Int      @id @default(autoincrement())
+  filename   String
+  file       String
+  uploadedAt DateTime @default(now())
+
+  avatar Avatar? @relation("AvatarImages")
+
+  albumPreviewOf Album? @relation("PreviewImage")
+
+  userId Int?
+  user   User? @relation(fields: [userId], references: [id])
+
+  post   Post? @relation("PostImages", fields: [postId], references: [id])
+  postId Int?
+
+  album   Album? @relation("AlbumImages", fields: [albumId], references: [id])
+  albumId Int?
+}
+
+model Link {
+  id  Int    @id @default(autoincrement())
+  url String
+
+  postId Int
+  post   Post @relation(fields: [postId], references: [id])
+}
+
+model Profile {
+  id            Int      @id @default(autoincrement())
+  user          User     @relation(fields: [user_id], references: [id])
+  user_id       Int      @unique
+  date_of_birth DateTime
+  signature     String? // путь к изображению или null
+
+  avatars Avatar[]
+
+  posts_viewed Post[] @relation("PostViews")
+  posts_liked  Post[] @relation("PostLikes")
+
+  @@map("app_profile") // если хочешь сохранить имя как в Django
+}
+
+model Tag {
+  id   Int    @id @default(autoincrement())
+  name String @unique
+
+  posts  Post[]  @relation("PostTags")
+  albums Album[]
+}
+
+model User {
+  id       Int     @id @default(autoincrement())
+  email    String  @unique
+  password String
+  name     String?
+  surname  String?
+  username String? @unique
+
+  images Image[]
+  albums Album[]
+
+  posts_authored Post[] @relation("PostsAuthored")
+
+  sentRequests     FriendRequest[] @relation("SentRequests")
+  receivedRequests FriendRequest[] @relation("ReceivedRequests")
+
+  last_login   DateTime?
+  is_staff     Boolean   @default(false)
+  is_active    Boolean   @default(true)
+  is_superuser Boolean   @default(false)
+  date_joined  DateTime  @default(now())
+
+  groups           UserGroup[]
+  user_permissions UserPermission[]
+  Profile          Profile?
+
+  ChatGroup      ChatGroup[]   @relation("Members")
+  ChatMessage    ChatMessage[]
+  AdminChatGroup ChatGroup[]   @relation("AdminGroup")
+
+  @@map("auth_user")
+}
+
+model Group {
+  id    Int         @id @default(autoincrement())
+  name  String      @unique
+  users UserGroup[]
+
+  @@map("auth_group")
+}
+
+model Permission {
+  id       Int              @id @default(autoincrement())
+  name     String
+  codename String
+  users    UserPermission[]
+
+  @@map("auth_permission")
+}
+
+model UserGroup {
+  id       Int   @id @default(autoincrement())
+  user     User  @relation(fields: [user_id], references: [id])
+  user_id  Int
+  group    Group @relation(fields: [group_id], references: [id])
+  group_id Int
+
+  @@unique([user_id, group_id])
+  @@map("auth_user_groups")
+}
+
+model UserPermission {
+  id            Int        @id @default(autoincrement())
+  user          User       @relation(fields: [user_id], references: [id])
+  user_id       Int
+  permission    Permission @relation(fields: [permission_id], references: [id])
+  permission_id Int
+
+  @@unique([user_id, permission_id])
+  @@map("auth_user_user_permissions")
+}
+
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}

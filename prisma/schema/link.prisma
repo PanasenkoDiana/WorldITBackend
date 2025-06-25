@@ -1,0 +1,7 @@
+model Link {
+  id  Int    @id @default(autoincrement())
+  url String
+
+  postId Int
+  post   Post @relation(fields: [postId], references: [id])
+}
