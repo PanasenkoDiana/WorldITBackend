@@ -4,16 +4,9 @@ import { UserController } from "./user.controller";
 
 const userRouter = Router();
 
-// 1) Первый шаг регистрации — отправляем код на почту
-userRouter.post("/register/start", UserController.startRegister);
-
-// 2) Второй шаг регистрации — подтверждаем код и создаём пользователя
-userRouter.post("/register/confirm", UserController.confirmRegister);
-
-// Остальные роуты
-
+userRouter.post("/register/start", UserController.createUser);
+userRouter.post("/register/confirm", UserController.createUser);
 userRouter.post("/login", UserController.authUser);
-// userRouter.post("/email", UserController.findUserByEmail);
 
 userRouter.get("/me", authTokenMiddleware, UserController.findUserById);
 
@@ -25,10 +18,8 @@ userRouter.post("/change/part-two", authTokenMiddleware, UserController.changeUs
 userRouter.post("/photo/create", authTokenMiddleware, UserController.addMyPhoto);
 userRouter.delete("/photo/delete", authTokenMiddleware, UserController.deleteMyPhoto);
 
-// userRouter.get("/photo/all", authTokenMiddleware, UserController.getMyPhotos);
-
-userRouter.post("/change-password", authTokenMiddleware, UserController.changePassword);
-
-userRouter.post("/change-username", authTokenMiddleware, UserController.changeUsername);
+userRouter.post("/change-password/one", authTokenMiddleware, UserController.changePasswordPartOne)
+userRouter.post("/change-password/two", authTokenMiddleware, UserController.changePasswordPartTwo)
+// userRouter.post("/change-username", authTokenMiddleware, UserController.changeUsername);
 
 export default userRouter;

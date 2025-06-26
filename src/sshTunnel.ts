@@ -1,38 +1,38 @@
 import { Client } from "ssh2";
 import net from "net";
 
-export const createTunnel = (): Promise<void> => {
+export const createTunnel = (): Promise<{ conn: Client; server: net.Server }> => {
   return new Promise((resolve, reject) => {
     const conn = new Client();
 
     conn.on("ready", () => {
-      conn.forwardOut(
-        "127.0.0.1",
-        3307,
-        "worlditAcademy.mysql.pythonanywhere-services.com",
-        3306,
-        (err, stream) => {
-          if (err) {
-            reject(err);
-            conn.end();
-            return;
-          }
+      const server = net.createServer((localSocket) => {
+        conn.forwardOut(
+          localSocket.remoteAddress || "127.0.0.1",
+          localSocket.remotePort || 0,
+          "worlditAcademy.mysql.pythonanywhere-services.com",
+          3306,
+          (err, stream) => {
+            if (err) {
+              console.error("❌ Ошибка форварда:", err);
+              localSocket.end();
+              return;
+            }
 
-          const server = net.createServer((localSocket) => {
             localSocket.pipe(stream).pipe(localSocket);
-          });
+          }
+        );
+      });
 
-          server.listen(3307, "127.0.0.1", () => {
-            console.log("✅ SSH-туннель открыт на 127.0.0.1:3307");
-            resolve();
-          });
+      server.on("error", (error) => {
+        console.error("❌ Ошибка сервера туннеля:", error);
+        reject(error);
+      });
 
-          server.on("error", (error) => {
-            console.error("❌ Ошибка сервера туннеля:", error);
-            reject(error);
-          });
-        }
-      );
+      server.listen(3307, "127.0.0.1", () => {
+        console.log("✅ SSH-туннель открыт на 127.0.0.1:3307");
+        resolve({ conn, server });
+      });
     });
 
     conn.on("error", (err) => {

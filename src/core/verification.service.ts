@@ -18,8 +18,9 @@ export class VerificationService {
     async generateAndSendCode(email: string, user: any): Promise<boolean> {
         const code = this.emailService.generateCode(6);
         const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
+        console.log(`email: ${email}, code: ${code}`);
         this.storage.set(email, { user, code, expiresAt });
-
+        console.log('storage: '+ JSON.stringify(this.storage.get(email)))
         return await this.emailService.sendVerifyMail(email, code);
     }
 

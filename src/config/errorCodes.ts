@@ -5,6 +5,7 @@ export interface IErrors{
     P2007 : string
     P2014 : string
 }
+
 export const errors: IErrors = {
     'P2002': 'Given non unique value',
     'P2003': 'Field is not found',

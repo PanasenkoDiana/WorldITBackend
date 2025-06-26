@@ -15,8 +15,10 @@ export async function base64ToImage(base64: string): Promise<{ filename: string;
 
 	const buffer = Buffer.from(imageData, "base64");
 	const fileName = `${uuidv4()}.${extension}`;
+	console.log(`File name: ${fileName}`)
 
 	const mediaDir = path.join(__dirname, "..", "..", "media");
+
     // Проверяем наличие папки media, если нет — создаём
     if (!fs.existsSync(mediaDir)) {
         fs.mkdirSync(mediaDir, { recursive: true });
