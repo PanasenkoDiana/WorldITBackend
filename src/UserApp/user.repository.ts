@@ -102,14 +102,16 @@ export const UserRepositories = {
 
 		if (!profile) throw new Error("Profile not found");
 
-		await prismaClient.user_app_avatar.create({
-			data: {
-				profile_id: BigInt(profile.id),
-				image: filename,
-				active: true,
-				shown: true,
-			},
-		});
+		if (filename !== "") {
+			await prismaClient.user_app_avatar.create({
+				data: {
+					profile_id: BigInt(profile.id),
+					image: filename,
+					active: true,
+					shown: true,
+				},
+			});
+		}
 
 		const user = await prismaClient.user.update({
 			where: { id },
