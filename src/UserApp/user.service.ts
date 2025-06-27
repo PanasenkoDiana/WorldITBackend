@@ -85,13 +85,13 @@ export const UserService = {
 		id: number,
 		username: string
 	): Promise<Result<User>> => {
-		let file
+		let imageFile
 		if (image && image.startsWith("data:image")) {
-			file = await base64ToImage(image);
+			imageFile = await base64ToImage(image);
 		}
 
 		const user = await UserRepositories.changeUserPartOne(
-			file?.filename || "",
+			imageFile?.filename || "",
 			id,
 			username
 		);

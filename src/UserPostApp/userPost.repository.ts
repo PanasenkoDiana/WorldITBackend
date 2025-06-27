@@ -34,6 +34,8 @@ export const userPostRepository = {
 			});
 			const imageIds = images.map((img) => ({ image_id: img.id }));
 
+			// const user = prismaClient.
+
 			const newPost = await prismaClient.post_app_post.create({
 				data: {
 					title: data.title,
@@ -221,6 +223,7 @@ export const userPostRepository = {
 					user_app_profile: {
 						include: {
 							user_app_avatar: true,
+							auth_user: true
 						},
 					},
 				},
@@ -249,11 +252,12 @@ export const userPostRepository = {
 					user_app_profile: {
 						include: {
 							user_app_avatar: true,
+							auth_user: true
 						},
 					},
 				},
 			});
-			return myPosts as any;
+			return myPosts;
 		} catch (error) {
 			console.log(error);
 			throw error;

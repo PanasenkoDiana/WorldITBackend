@@ -33395,7 +33395,6 @@ export namespace Prisma {
   }
 
   export type UserUpdateInput = {
-    name: any;
     password?: StringFieldUpdateOperationsInput | string
     last_login?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     is_superuser?: BoolFieldUpdateOperationsInput | boolean

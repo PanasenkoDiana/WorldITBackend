@@ -17,8 +17,8 @@ import { createTunnel } from "./sshTunnel";
 
 dotenv.config();
 
-const HOST = "192.168.0.111";
-const PORT = 8000;
+const HOST = "192.168.0.243";
+const PORT = 3003;
 
 const startServer = async () => {
   try {

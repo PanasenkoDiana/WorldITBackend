@@ -1,30 +1,31 @@
 import { friendService } from "./friend.service";
 import { Request, Response } from "express";
 import { ICancelFriendRequestWithoutId } from "./friend.types";
+import { serializeBigInt } from "../tools/serializeBigInt";
 
 export const friendController = {
   getAllFriends: async function (req: Request, res: Response) {
     const id = BigInt(res.locals.userId);
     const result = await friendService.getAllFriends(id);
-    res.json(result);
+    res.json(serializeBigInt(result));
   },
 
   getRecommends: async function (req: Request, res: Response) {
     const id = BigInt(res.locals.userId);
     const result = await friendService.getRecommends(id);
-    res.json(result);
+    res.json(serializeBigInt(result));
   },
 
   getRequests: async function (req: Request, res: Response) {
     const id = BigInt(res.locals.userId);
     const result = await friendService.getRequests(id);
-    res.json(result);
+    res.json(serializeBigInt(result));
   },
 
   getMyRequests: async function (req: Request, res: Response) {
     const id = BigInt(res.locals.userId);
     const result = await friendService.getMyRequests(id);
-    res.json(result);
+    res.json(serializeBigInt(result));
   },
 
   sendRequest: async function (req: Request, res: Response) {
@@ -34,7 +35,7 @@ export const friendController = {
       profile1_id,
       toUsername,
     });
-    res.json(result);
+    res.json(serializeBigInt(result));
   },
 
   acceptRequest: async function (req: Request, res: Response) {
@@ -44,7 +45,7 @@ export const friendController = {
       fromUsername,
       profile2_id,
     });
-    res.json(result);
+    res.json(serializeBigInt(result));
   },
 
   cancelRequest: async function (req: Request, res: Response) {
@@ -55,7 +56,7 @@ export const friendController = {
       username,
       isIncoming,
     });
-    res.json(result);
+    res.json(serializeBigInt(result));
   },
 
   deleteFriend: async function (req: Request, res: Response) {
@@ -65,6 +66,6 @@ export const friendController = {
       profile1_id,
       username,
     });
-    res.json(result);
+    res.json(serializeBigInt(result));
   },
 };

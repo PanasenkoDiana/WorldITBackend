@@ -6,6 +6,10 @@ import { Image } from "../UserPostApp/userPost.type";
 export async function base64ToImage(base64: string): Promise<{ filename: string; file: string }> {
     // Из data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAXIAAAEWAgMAAAAGL
     // Возвращает image/png и iVBORw0KGgoAAAANSUhEUgAAAXIAAAEWAgMAAAAGL
+	if (!base64 || typeof base64 !== 'string') {
+        throw console.error("Invalid base64 string provided to base64ToImage:", base64);
+    }
+
 	const info = base64.split(";base64,")
 
 	// Хранит тип файла
