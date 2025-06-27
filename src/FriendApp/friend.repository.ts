@@ -13,16 +13,21 @@ import {
 } from "./friend.types";
 
 export const friendRepository = {
-	getAllFriends: async function (profileId: bigint): Promise<IUser[]> {
+	getAllFriends: async function (userId: bigint): Promise<IUser[]> {
 		try {
-			// Друзья, где пользователь инициатор (profile1_id)
+			const myProfile = await prismaClient.user_app_profile.findUnique({
+				where: { user_id: Number(userId) },
+			});
+
+			if (!myProfile) throw new Error("User profile not found.");
+
 			const friendships = await prismaClient.user_app_friendship.findMany(
 				{
 					where: {
 						accepted: true,
 						OR: [
-							{ profile1_id: profileId },
-							{ profile2_id: profileId },
+							{ profile1_id: myProfile.id },
+							{ profile2_id: myProfile.id },
 						],
 					},
 					include: {
@@ -46,7 +51,7 @@ export const friendRepository = {
 
 			return friendships.map((f) => {
 				const profile =
-					f.profile1_id === profileId
+					f.profile1_id === BigInt(myProfile.id)
 						? f.user_app_profile_user_app_friendship_profile2_idTouser_app_profile
 						: f.user_app_profile_user_app_friendship_profile1_idTouser_app_profile;
 
@@ -65,19 +70,25 @@ export const friendRepository = {
 				};
 			});
 		} catch (err) {
-			console.log(err);
+			console.error("Error in getAllFriends:", err); // Используем console.error
 			throw err;
 		}
 	},
 
-	getRecommends: async function (profileId: bigint): Promise<IUser[]> {
+	getRecommends: async function (userId: bigint): Promise<IUser[]> {
 		try {
+			const myProfile = await prismaClient.user_app_profile.findUnique({
+				where: { user_id: Number(userId) },
+			});
+
+			if (!myProfile) throw new Error("User profile not found.");
+
 			const relatedFriendships =
 				await prismaClient.user_app_friendship.findMany({
 					where: {
 						OR: [
-							{ profile1_id: profileId },
-							{ profile2_id: profileId },
+							{ profile1_id: myProfile.id },
+							{ profile2_id: myProfile.id },
 						],
 					},
 					select: {
@@ -88,11 +99,11 @@ export const friendRepository = {
 
 			const excludedIds = [
 				...relatedFriendships.map((friendship) =>
-					friendship.profile1_id === profileId
+					friendship.profile1_id === BigInt(myProfile.id)
 						? friendship.profile2_id
 						: friendship.profile1_id
 				),
-				profileId,
+				BigInt(myProfile.id),
 			];
 
 			const profiles = await prismaClient.user_app_profile.findMany({
@@ -122,17 +133,23 @@ export const friendRepository = {
 				},
 			}));
 		} catch (err) {
-			console.log(err);
+			console.error("Error in getRecommends:", err);
 			throw err;
 		}
 	},
 
-	getRequests: async function (profileId: bigint): Promise<IGetRequest[]> {
+	getRequests: async function (userId: bigint): Promise<IGetRequest[]> {
 		try {
+			const myProfile = await prismaClient.user_app_profile.findUnique({
+				where: { user_id: Number(userId) },
+			});
+
+			if (!myProfile) throw new Error("User profile not found.");
+
 			const requests = await prismaClient.user_app_friendship.findMany({
 				where: {
 					accepted: false,
-					profile2_id: profileId,
+					profile2_id: myProfile.id,
 				},
 				include: {
 					user_app_profile_user_app_friendship_profile1_idTouser_app_profile:
@@ -189,7 +206,7 @@ export const friendRepository = {
 				},
 			}));
 		} catch (err) {
-			console.log(err);
+			console.error("Error in getRequests:", err);
 			throw err;
 		}
 	},
@@ -258,7 +275,7 @@ export const friendRepository = {
 				},
 			}));
 		} catch (err) {
-			console.log(err);
+			console.error("Error in getMyRequests:", err);
 			throw err;
 		}
 	},
@@ -267,20 +284,56 @@ export const friendRepository = {
 		data: ICreateFriendRequest
 	): Promise<IFriendRequest> {
 		try {
-			const toProfile = await prismaClient.user_app_profile.findFirst({
-				where: {
-					auth_user: { username: data.toUsername },
-				},
-				select: { id: true },
+			const myProfile = await prismaClient.user_app_profile.findUnique({
+				where: { user_id: Number(data.id) },
 			});
 
-			if (!toProfile) throw new Error("User profile not found");
+			if (!myProfile) throw new Error("USER_PROFILE_NOT_FOUND");
+
+			console.log(data);
+
+			const toUser = await prismaClient.user.findFirst({
+				where: {
+					username: data.username,
+				},
+				select: {
+					user_app_profile: true,
+				},
+			});
+
+			if (!toUser || !toUser.user_app_profile) {
+				throw new Error("RECIPIENT_PROFILE_NOT_FOUND");
+			}
+
+			const existingFriendship =
+				await prismaClient.user_app_friendship.findFirst({
+					where: {
+						OR: [
+							{
+								profile1_id: myProfile.id,
+								profile2_id: toUser.user_app_profile.id,
+							},
+							{
+								profile1_id: toUser.user_app_profile.id,
+								profile2_id: myProfile.id,
+							},
+						],
+					},
+				});
+
+			if (existingFriendship) {
+				if (existingFriendship.accepted) {
+					throw new Error("ALREADY_FRIENDS");
+				} else {
+					throw new Error("PENDING_REQUEST_EXISTS");
+				}
+			}
 
 			const request = await prismaClient.user_app_friendship.create({
 				data: {
 					accepted: false,
-					profile1_id: data.profile1_id, // Changed from fromProfileId
-					profile2_id: toProfile.id,
+					profile1_id: myProfile.id,
+					profile2_id: toUser.user_app_profile.id,
 				},
 				select: {
 					profile1_id: true,
@@ -294,8 +347,8 @@ export const friendRepository = {
 				profile2_id: request.profile2_id,
 				accepted: request.accepted,
 			};
-		} catch (err) {
-			console.log(err);
+		} catch (err: any) {
+			console.error("Error in sendRequest:", err);
 			throw err;
 		}
 	},
@@ -304,19 +357,25 @@ export const friendRepository = {
 		data: IAcceptFriendRequest
 	): Promise<IFriendRequest> {
 		try {
+			const myProfile = await prismaClient.user_app_profile.findUnique({
+				where: { user_id: Number(data.id) },
+			});
+
+			if (!myProfile) throw new Error("USER_PROFILE_NOT_FOUND");
+
 			const fromProfile = await prismaClient.user_app_profile.findFirst({
 				where: {
-					auth_user: { username: data.fromUsername },
+					auth_user: { username: data.username },
 				},
 				select: { id: true },
 			});
 
-			if (!fromProfile) throw new Error("User profile not found");
+			if (!fromProfile) throw new Error("SENDER_PROFILE_NOT_FOUND");
 
 			const request = await prismaClient.user_app_friendship.updateMany({
 				where: {
 					profile1_id: fromProfile.id,
-					profile2_id: data.profile2_id, // Changed from toProfileId
+					profile2_id: myProfile.id,
 					accepted: false,
 				},
 				data: {
@@ -324,13 +383,17 @@ export const friendRepository = {
 				},
 			});
 
+			if (request.count === 0) {
+				throw new Error("FRIEND_REQUEST_NOT_FOUND_OR_ALREADY_ACCEPTED");
+			}
+
 			return {
 				profile1_id: fromProfile.id,
-				profile2_id: data.profile2_id, // Changed from toProfileId
+				profile2_id: myProfile.id,
 				accepted: true,
 			};
 		} catch (err) {
-			console.log(err);
+			console.error("Error in acceptRequest:", err);
 			throw err;
 		}
 	},
@@ -339,6 +402,12 @@ export const friendRepository = {
 		data: ICancelFriendRequest
 	): Promise<ICanceledRequest> {
 		try {
+			const myProfile = await prismaClient.user_app_profile.findUnique({
+				where: { user_id: Number(data.id) },
+			});
+
+			if (!myProfile) throw new Error("USER_PROFILE_NOT_FOUND");
+
 			const otherProfile = await prismaClient.user_app_profile.findFirst({
 				where: {
 					auth_user: { username: data.username },
@@ -346,26 +415,31 @@ export const friendRepository = {
 				select: { id: true },
 			});
 
-			if (!otherProfile) throw new Error("User profile not found");
+			if (!otherProfile) throw new Error("OTHER_PROFILE_NOT_FOUND");
 
 			const profile1_id = data.isIncoming
 				? otherProfile.id
-				: data.profile1_id;
+				: myProfile.id;
 			const profile2_id = data.isIncoming
-				? data.profile1_id
+				? myProfile.id
 				: otherProfile.id;
 
-			await prismaClient.user_app_friendship.deleteMany({
-				where: {
-					profile1_id,
-					profile2_id,
-					accepted: false,
-				},
-			});
+			const deleteResult =
+				await prismaClient.user_app_friendship.deleteMany({
+					where: {
+						profile1_id,
+						profile2_id,
+						accepted: false,
+					},
+				});
+
+			if (deleteResult.count === 0) {
+				throw new Error("PENDING_REQUEST_NOT_FOUND");
+			}
 
 			return { status: "canceled" };
 		} catch (err) {
-			console.log(err);
+			console.error("Error in cancelRequest:", err);
 			throw err;
 		}
 	},
@@ -374,6 +448,12 @@ export const friendRepository = {
 		data: IDeleteFriend
 	): Promise<IDeletedFriend> {
 		try {
+			const myProfile = await prismaClient.user_app_profile.findUnique({
+				where: { user_id: Number(data.id) },
+			});
+
+			if (!myProfile) throw new Error("USER_PROFILE_NOT_FOUND");
+
 			const otherProfile = await prismaClient.user_app_profile.findFirst({
 				where: {
 					auth_user: { username: data.username },
@@ -381,27 +461,32 @@ export const friendRepository = {
 				select: { id: true },
 			});
 
-			if (!otherProfile) throw new Error("User profile not found");
+			if (!otherProfile) throw new Error("FRIEND_PROFILE_NOT_FOUND");
 
-			await prismaClient.user_app_friendship.deleteMany({
-				where: {
-					OR: [
-						{
-							profile1_id: data.profile1_id,
-							profile2_id: otherProfile.id,
-						},
-						{
-							profile1_id: otherProfile.id,
-							profile2_id: data.profile1_id,
-						},
-					],
-					accepted: true,
-				},
-			});
+			const deleteResult =
+				await prismaClient.user_app_friendship.deleteMany({
+					where: {
+						OR: [
+							{
+								profile1_id: myProfile.id,
+								profile2_id: otherProfile.id,
+							},
+							{
+								profile1_id: otherProfile.id,
+								profile2_id: myProfile.id,
+							},
+						],
+						accepted: true,
+					},
+				});
+
+			if (deleteResult.count === 0) {
+				throw new Error("FRIENDSHIP_NOT_FOUND");
+			}
 
 			return { status: "deleted" };
 		} catch (err) {
-			console.log(err);
+			console.error("Error in deleteFriend:", err);
 			throw err;
 		}
 	},

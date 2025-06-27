@@ -2,7 +2,7 @@ import { userPostService } from "./userPost.service";
 import { Request, Response } from "express";
 import { CreateUserPost, ImageCreateMany } from "./userPost.type";
 
-function replaceBigInt(obj: any): any {
+export function replaceBigInt(obj: any): any {
 	return JSON.parse(
 		JSON.stringify(obj, (_, value) =>
 			typeof value === "bigint" ? value.toString() : value
@@ -12,21 +12,18 @@ function replaceBigInt(obj: any): any {
 
 export const userPostController = {
     createPost: async function (
-        req: Request<
-            {},
-            {},
-            CreateUserPost & { images?: ImageCreateMany; links?: string[] }
-        >,
+        req: Request,
         res: Response
     ) {
         const userId = BigInt(res.locals.userId);
         const { images, links, ...data } = req.body;
+        const allImages: string[] = images
 
         // Filter out any undefined, null, or empty string 'file' properties
-        const imagesForService: string[] = images
-            ? images
-                  .map((img) => img.file)
-                  .filter((file): file is string => typeof file === "string" && file.length > 0)
+        const imagesForService: string[] = allImages
+            ? allImages
+                  .map((img) => img)
+                //   .filter((file): file is string => typeof file === "string" && file.length > 0)
             : [];
 
         const result = await userPostService.createPost(

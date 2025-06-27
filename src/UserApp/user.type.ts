@@ -72,3 +72,10 @@ export type CreateUser = Prisma.UserCreateInput
 export type createMyPhotoCredentials = { image: string }
 
 export type Avatar = Prisma.user_app_avatarGetPayload<{}>
+
+export type Profile = Prisma.user_app_profileGetPayload<{
+    include: {
+        auth_user: true,
+        user_app_avatar: true
+    }
+}>

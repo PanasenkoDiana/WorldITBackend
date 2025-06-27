@@ -5,7 +5,7 @@ import { UserController } from "./user.controller";
 const userRouter = Router();
 
 userRouter.post("/register/start", UserController.createUser);
-userRouter.post("/register/confirm", UserController.createUser);
+userRouter.post("/register/confirm", UserController.verifyUser);
 userRouter.post("/login", UserController.authUser);
 
 userRouter.get("/me", authTokenMiddleware, UserController.findUserById);
@@ -21,5 +21,7 @@ userRouter.delete("/photo/delete", authTokenMiddleware, UserController.deleteMyP
 userRouter.post("/change-password/one", authTokenMiddleware, UserController.changePasswordPartOne)
 userRouter.post("/change-password/two", authTokenMiddleware, UserController.changePasswordPartTwo)
 // userRouter.post("/change-username", authTokenMiddleware, UserController.changeUsername);
+userRouter.post("/recipient", UserController.findRecipientByProfileId)
+
 
 export default userRouter;

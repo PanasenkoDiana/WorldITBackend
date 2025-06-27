@@ -192,4 +192,18 @@ export const UserRepositories = {
 
 		return "username changed";
 	},
+
+	findRecipientByProfileId: async (id: number) => {
+		const profile = await prismaClient.user_app_profile.findFirst({
+			where: {
+				id: id
+			},
+			include: {
+				auth_user: true,
+				user_app_avatar: true
+			},
+		});
+
+		return profile
+	},
 };

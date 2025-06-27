@@ -40,7 +40,7 @@ export const userPostService = {
 		const linksWithUrl = (links || []).map(link => ({ url: link }));
 
 		const newPost = await userPostRepository.createPost(
-			profileId,
+			Number(profileId),
 			data,
 			imagesData,
 			linksWithUrl
@@ -149,6 +149,7 @@ export const userPostService = {
 	getMyPosts: async function (profileId: bigint): Promise<Result<UserPost[]>> {
 		try {
 			const myPosts = await userPostRepository.getMyPosts(profileId);
+			// if (typeof myPosts === string) return error
 			return success(myPosts);
 		} catch (err) {
 			console.log(err);

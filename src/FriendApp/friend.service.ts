@@ -61,8 +61,8 @@ export const friendService = {
 	): Promise<Result<IFriendRequest>> {
 		try {
 			const friendRequest = await friendRepository.sendRequest({
-				profile1_id: data.profile1_id,
-				toUsername: data.toUsername,
+				id: data.id,
+				username: data.username,
 			});
 			return success(friendRequest);
 		} catch (err) {
@@ -76,8 +76,8 @@ export const friendService = {
 	): Promise<Result<IFriendRequest>> {
 		try {
 			const friendRequest = await friendRepository.acceptRequest({
-				fromUsername: data.fromUsername,
-				profile2_id: data.profile2_id
+				username: data.username,
+				id: data.id
 			});
 			return success(friendRequest);
 		} catch (err) {

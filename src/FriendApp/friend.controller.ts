@@ -29,30 +29,30 @@ export const friendController = {
   },
 
   sendRequest: async function (req: Request, res: Response) {
-    const profile1_id = BigInt(res.locals.userId);
-    const { toUsername } = req.body;
+    const id = BigInt(res.locals.userId);
+    const { username } = req.body;
     const result = await friendService.sendRequest({
-      profile1_id,
-      toUsername,
+      id,
+      username,
     });
     res.json(serializeBigInt(result));
   },
 
   acceptRequest: async function (req: Request, res: Response) {
-    const profile2_id = BigInt(res.locals.userId);
-    const { fromUsername } = req.body;
+    const id = BigInt(res.locals.userId);
+    const { username } = req.body;
     const result = await friendService.acceptRequest({
-      fromUsername,
-      profile2_id,
+      id,
+      username,
     });
     res.json(serializeBigInt(result));
   },
 
   cancelRequest: async function (req: Request, res: Response) {
-    const profile1_id = BigInt(res.locals.userId);
+    const id = BigInt(res.locals.userId);
     const { username, isIncoming } = req.body;
     const result = await friendService.cancelRequest({
-      profile1_id,
+      id,
       username,
       isIncoming,
     });
@@ -60,10 +60,10 @@ export const friendController = {
   },
 
   deleteFriend: async function (req: Request, res: Response) {
-    const profile1_id = BigInt(res.locals.userId);
+    const id = BigInt(res.locals.userId);
     const { username } = req.body;
     const result = await friendService.deleteFriend({
-      profile1_id,
+      id,
       username,
     });
     res.json(serializeBigInt(result));

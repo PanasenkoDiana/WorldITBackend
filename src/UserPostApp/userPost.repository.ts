@@ -1,4 +1,5 @@
 import { prismaClient } from "../prisma/client";
+import { replaceBigInt } from "./userPost.controller";
 import {
 	CreateUserPost,
 	UpdateUserPost,
@@ -9,22 +10,35 @@ import {
 
 export const userPostRepository = {
 	createPost: async function (
-		profileId: bigint,
+		authUserId: number, // был profileId, теперь передаем auth_user.id
 		data: CreateUserPost,
 		imagesData: { filename: string; file: string }[],
 		links: { url: string }[]
 	): Promise<UserPost> {
 		try {
+			// Получаем профиль пользователя по user_id
+			const profile = await prismaClient.user_app_profile.findFirst({
+				where: { user_id: authUserId },
+			});
+
+			if (!profile) {
+				throw new Error("User profile not found");
+			}
+
 			const now = new Date();
+
+			// Сохраняем изображения
 			const imagesWithDate = imagesData.map((img) => ({
 				filename: img.filename,
 				file: img.file,
 				uploaded_at: now,
 			}));
+
 			await prismaClient.post_app_image.createMany({
 				data: imagesWithDate,
 				skipDuplicates: true,
 			});
+
 			const images = await prismaClient.post_app_image.findMany({
 				where: {
 					filename: { in: imagesData.map((img) => img.filename) },
@@ -32,22 +46,23 @@ export const userPostRepository = {
 				orderBy: { id: "desc" },
 				take: imagesData.length,
 			});
+
 			const imageIds = images.map((img) => ({ image_id: img.id }));
 
-			// const user = prismaClient.
-
+			// Создание поста
 			const newPost = await prismaClient.post_app_post.create({
 				data: {
 					title: data.title,
 					content: data.content,
 					topic: data.topic,
-					author_id: profileId,
+					author_id: profile.id, // теперь используется корректный user_app_profile.id
 					post_app_link: {
 						createMany: {
 							data: links,
 						},
 					},
 					post_app_post_images: {
+						
 						createMany: {
 							data: imageIds,
 						},
@@ -55,7 +70,11 @@ export const userPostRepository = {
 					...(data.tags
 						? {
 								post_app_post_tags: {
-									create: (data.tags as Array<{ name: string } | string>).map((tag) => {
+									create: (
+										data.tags as Array<
+											{ name: string } | string
+										>
+									).map((tag) => {
 										let tagName =
 											typeof tag === "string"
 												? tag
@@ -87,10 +106,12 @@ export const userPostRepository = {
 					user_app_profile: {
 						include: {
 							user_app_avatar: true,
+							auth_user: true,
 						},
 					},
 				},
 			});
+
 			return newPost as any;
 		} catch (error) {
 			console.log(error);
@@ -223,7 +244,7 @@ export const userPostRepository = {
 					user_app_profile: {
 						include: {
 							user_app_avatar: true,
-							auth_user: true
+							auth_user: true,
 						},
 					},
 				},
@@ -235,11 +256,25 @@ export const userPostRepository = {
 		}
 	},
 
-	getMyPosts: async function (profileId: bigint) {
+	getMyPosts: async function (userId: bigint) {
 		try {
+			const user = await prismaClient.user.findUnique({
+				where: {
+					id: Number(userId),
+				},
+				include: {
+					user_app_profile: true
+				},
+			});
+
+			if (!user) {
+				throw new Error("User profile not found");
+			}
+
+			// Получаем посты по author_id = profile.id
 			const myPosts = await prismaClient.post_app_post.findMany({
 				where: {
-					author_id: profileId,
+					author_id: user.user_app_profile?.id,
 				},
 				include: {
 					post_app_post_tags: {
@@ -252,15 +287,16 @@ export const userPostRepository = {
 					user_app_profile: {
 						include: {
 							user_app_avatar: true,
-							auth_user: true
+							auth_user: true,
 						},
 					},
 				},
 			});
+
 			return myPosts;
 		} catch (error) {
 			console.log(error);
 			throw error;
 		}
 	},
-};
+};  

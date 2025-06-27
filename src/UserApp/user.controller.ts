@@ -12,11 +12,7 @@ export const UserController = {
 		}
 	},
 
-	verifyUser: async (
-		req: Request,
-		res: Response,
-		next: NextFunction
-	) => {
+	verifyUser: async (req: Request, res: Response, next: NextFunction) => {
 		try {
 			const { email, code } = req.body;
 			const token = await UserService.verifyUser(email, code);
@@ -65,7 +61,11 @@ export const UserController = {
 			const id = res.locals.userId;
 			const { profileImage, username } = req.body;
 			console.log(req.body);
-			const result = await UserService.changeUserPartOne(profileImage, id, username);
+			const result = await UserService.changeUserPartOne(
+				profileImage,
+				id,
+				username
+			);
 			res.json(serializeBigInt(result));
 		} catch (err) {
 			next(err);
@@ -107,29 +107,71 @@ export const UserController = {
 		}
 	},
 
-	changePasswordPartOne: async function(req: Request, res: Response, next: NextFunction) {
-        try {
-            const id = +res.locals.userId
+	changePasswordPartOne: async function (
+		req: Request,
+		res: Response,
+		next: NextFunction
+	) {
+		try {
+			const id = +res.locals.userId;
 
-            const result = await UserService.changePasswordPartOne(id)
-            res.json(result);
-        } catch(err){
-            next(err);
-        }
-    },
+			const result = await UserService.changePasswordPartOne(id);
+			res.json(serializeBigInt(result));
+		} catch (err) {
+			next(err);
+		}
+	},
 
-    changePasswordPartTwo: async function(req: Request, res: Response, next: NextFunction) {
-        try {
-            const code = req.body.code
-            const password = req.body.password
-            const id = +res.locals.userId
+	changePasswordPartTwo: async function (
+		req: Request,
+		res: Response,
+		next: NextFunction
+	) {
+		try {
+			const code = req.body.code;
+			const password = req.body.password;
+			const id = +res.locals.userId;
 
-            const result = await UserService.changePasswordPartTwo(code, id, password)
-            res.json(result);
-        } catch(err){
-            next(err);
-        }
-    },
+			const result = await UserService.changePasswordPartTwo(
+				code,
+				id,
+				password
+			);
+			res.json(serializeBigInt(result));
+		} catch (err) {
+			next(err);
+		}
+	},
+
+	getUserById: async function (
+		req: Request,
+		res: Response,
+		next: NextFunction
+	) {
+		try {
+			const id = req.body.id;
+			const result = await UserService.findUserById(id);
+
+			res.json(serializeBigInt(result));
+		} catch (err) {
+			next(err);
+		}
+	},
+
+	findRecipientByProfileId: async function (
+		req: Request,
+		res: Response,
+		next: NextFunction
+	) {
+		try {
+			const id = req.body.id;
+			const result = await UserService.findRecipientByProfileId(id);
+
+			res.json(serializeBigInt(result));
+		} catch (err) {
+			next(err);
+		}
+	},
 
 	// changeUsername: async (req: Request, res: Response, next: NextFunction) => {
 	// 	try {

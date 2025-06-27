@@ -6,6 +6,7 @@ import {
 	createMyPhotoCredentials,
 	User,
 	Avatar,
+	Profile,
 	// Avatar,
 } from "./user.type";
 import { UserRepositories } from "./user.repository";
@@ -71,6 +72,12 @@ export const UserService = {
 		return success(user);
 	},
 
+	findRecipientByProfileId: async (id: number): Promise<Result<Profile>> => {
+		const user = await UserRepositories.findRecipientByProfileId(id);
+		if (!user) return error("User not found");
+		return success(user);
+	},
+
 	secondRegister: async (
 		data: secondRegister,
 		id: number
@@ -85,7 +92,7 @@ export const UserService = {
 		id: number,
 		username: string
 	): Promise<Result<User>> => {
-		let imageFile
+		let imageFile;
 		if (image && image.startsWith("data:image")) {
 			imageFile = await base64ToImage(image);
 		}
