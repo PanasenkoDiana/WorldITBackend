@@ -16,29 +16,33 @@ export const friendRepository = {
 	getAllFriends: async function (profileId: bigint): Promise<IUser[]> {
 		try {
 			// Друзья, где пользователь инициатор (profile1_id)
-			const friendships = await prismaClient.user_app_friendship.findMany({
-				where: {
-					accepted: true,
-					OR: [
-						{ profile1_id: profileId },
-						{ profile2_id: profileId },
-					],
-				},
-				include: {
-					user_app_profile_user_app_friendship_profile1_idTouser_app_profile: {
-						include: {
-							auth_user: true,
-							user_app_avatar: true,
-						},
+			const friendships = await prismaClient.user_app_friendship.findMany(
+				{
+					where: {
+						accepted: true,
+						OR: [
+							{ profile1_id: profileId },
+							{ profile2_id: profileId },
+						],
 					},
-					user_app_profile_user_app_friendship_profile2_idTouser_app_profile: {
-						include: {
-							auth_user: true,
-							user_app_avatar: true,
-						},
+					include: {
+						user_app_profile_user_app_friendship_profile1_idTouser_app_profile:
+							{
+								include: {
+									auth_user: true,
+									user_app_avatar: true,
+								},
+							},
+						user_app_profile_user_app_friendship_profile2_idTouser_app_profile:
+							{
+								include: {
+									auth_user: true,
+									user_app_avatar: true,
+								},
+							},
 					},
-				},
-			});
+				}
+			);
 
 			return friendships.map((f) => {
 				const profile =
@@ -68,22 +72,25 @@ export const friendRepository = {
 
 	getRecommends: async function (profileId: bigint): Promise<IUser[]> {
 		try {
-			const relatedFriendships = await prismaClient.user_app_friendship.findMany({
-				where: {
-					OR: [
-						{ profile1_id: profileId },
-						{ profile2_id: profileId }
-					],
-				},
-				select: {
-					profile1_id: true,
-					profile2_id: true,
-				},
-			});
+			const relatedFriendships =
+				await prismaClient.user_app_friendship.findMany({
+					where: {
+						OR: [
+							{ profile1_id: profileId },
+							{ profile2_id: profileId },
+						],
+					},
+					select: {
+						profile1_id: true,
+						profile2_id: true,
+					},
+				});
 
 			const excludedIds = [
 				...relatedFriendships.map((friendship) =>
-					friendship.profile1_id === profileId ? friendship.profile2_id : friendship.profile1_id
+					friendship.profile1_id === profileId
+						? friendship.profile2_id
+						: friendship.profile1_id
 				),
 				profileId,
 			];
@@ -101,7 +108,7 @@ export const friendRepository = {
 				},
 			});
 
-			return profiles.map(profile => ({
+			return profiles.map((profile) => ({
 				id: Number(profile.id),
 				first_name: profile.auth_user?.first_name || "",
 				last_name: profile.auth_user?.last_name || "",
@@ -128,30 +135,58 @@ export const friendRepository = {
 					profile2_id: profileId,
 				},
 				include: {
-					user_app_profile_user_app_friendship_profile1_idTouser_app_profile: {
-						include: {
-							auth_user: true,
-							user_app_avatar: true
-						}
-					}
-				}
+					user_app_profile_user_app_friendship_profile1_idTouser_app_profile:
+						{
+							include: {
+								auth_user: true,
+								user_app_avatar: true,
+							},
+						},
+				},
 			});
 
-			return requests.map(req => ({
+			return requests.map((req) => ({
 				status: "pending",
 				from: {
-					id: Number(req.user_app_profile_user_app_friendship_profile1_idTouser_app_profile.id),
-					first_name: req.user_app_profile_user_app_friendship_profile1_idTouser_app_profile.auth_user?.first_name || "",
-					last_name: req.user_app_profile_user_app_friendship_profile1_idTouser_app_profile.auth_user?.last_name || "",
-					username: req.user_app_profile_user_app_friendship_profile1_idTouser_app_profile.auth_user?.username || "",
+					id: Number(
+						req
+							.user_app_profile_user_app_friendship_profile1_idTouser_app_profile
+							.id
+					),
+					first_name:
+						req
+							.user_app_profile_user_app_friendship_profile1_idTouser_app_profile
+							.auth_user?.first_name || "",
+					last_name:
+						req
+							.user_app_profile_user_app_friendship_profile1_idTouser_app_profile
+							.auth_user?.last_name || "",
+					username:
+						req
+							.user_app_profile_user_app_friendship_profile1_idTouser_app_profile
+							.auth_user?.username || "",
 					user_app_profile: {
-						id: req.user_app_profile_user_app_friendship_profile1_idTouser_app_profile.id,
-						date_of_birth: req.user_app_profile_user_app_friendship_profile1_idTouser_app_profile.date_of_birth,
-						user_id: req.user_app_profile_user_app_friendship_profile1_idTouser_app_profile.user_id,
-						signature: req.user_app_profile_user_app_friendship_profile1_idTouser_app_profile.signature,
-						user_app_avatar: req.user_app_profile_user_app_friendship_profile1_idTouser_app_profile.user_app_avatar
-					}
-				}
+						id: req
+							.user_app_profile_user_app_friendship_profile1_idTouser_app_profile
+							.id,
+						date_of_birth:
+							req
+								.user_app_profile_user_app_friendship_profile1_idTouser_app_profile
+								.date_of_birth,
+						user_id:
+							req
+								.user_app_profile_user_app_friendship_profile1_idTouser_app_profile
+								.user_id,
+						signature:
+							req
+								.user_app_profile_user_app_friendship_profile1_idTouser_app_profile
+								.signature,
+						user_app_avatar:
+							req
+								.user_app_profile_user_app_friendship_profile1_idTouser_app_profile
+								.user_app_avatar,
+					},
+				},
 			}));
 		} catch (err) {
 			console.log(err);
@@ -159,38 +194,68 @@ export const friendRepository = {
 		}
 	},
 
-	getMyRequests: async function (profileId: bigint): Promise<IGetMyRequest[]> {
+	getMyRequests: async function (
+		profileId: bigint
+	): Promise<IGetMyRequest[]> {
 		try {
 			const requests = await prismaClient.user_app_friendship.findMany({
 				where: {
 					accepted: false,
-					profile1_id: profileId
+					profile1_id: profileId,
 				},
 				include: {
-					user_app_profile_user_app_friendship_profile2_idTouser_app_profile: {
-						include: {
-							auth_user: true,
-							user_app_avatar: true
-						}
-					}
-				}
+					user_app_profile_user_app_friendship_profile2_idTouser_app_profile:
+						{
+							include: {
+								auth_user: true,
+								user_app_avatar: true,
+							},
+						},
+				},
 			});
 
-			return requests.map(req => ({
+			return requests.map((req) => ({
 				status: "pending",
 				to: {
-					id: Number(req.user_app_profile_user_app_friendship_profile2_idTouser_app_profile.id),
-					first_name: req.user_app_profile_user_app_friendship_profile2_idTouser_app_profile.auth_user?.first_name || "",
-					last_name: req.user_app_profile_user_app_friendship_profile2_idTouser_app_profile.auth_user?.last_name || "",
-					username: req.user_app_profile_user_app_friendship_profile2_idTouser_app_profile.auth_user?.username || "",
+					id: Number(
+						req
+							.user_app_profile_user_app_friendship_profile2_idTouser_app_profile
+							.id
+					),
+					first_name:
+						req
+							.user_app_profile_user_app_friendship_profile2_idTouser_app_profile
+							.auth_user?.first_name || "",
+					last_name:
+						req
+							.user_app_profile_user_app_friendship_profile2_idTouser_app_profile
+							.auth_user?.last_name || "",
+					username:
+						req
+							.user_app_profile_user_app_friendship_profile2_idTouser_app_profile
+							.auth_user?.username || "",
 					user_app_profile: {
-						id: req.user_app_profile_user_app_friendship_profile2_idTouser_app_profile.id,
-						date_of_birth: req.user_app_profile_user_app_friendship_profile2_idTouser_app_profile.date_of_birth,
-						user_id: req.user_app_profile_user_app_friendship_profile2_idTouser_app_profile.user_id,
-						signature: req.user_app_profile_user_app_friendship_profile2_idTouser_app_profile.signature,
-						user_app_avatar: req.user_app_profile_user_app_friendship_profile2_idTouser_app_profile.user_app_avatar
-					}
-				}
+						id: req
+							.user_app_profile_user_app_friendship_profile2_idTouser_app_profile
+							.id,
+						date_of_birth:
+							req
+								.user_app_profile_user_app_friendship_profile2_idTouser_app_profile
+								.date_of_birth,
+						user_id:
+							req
+								.user_app_profile_user_app_friendship_profile2_idTouser_app_profile
+								.user_id,
+						signature:
+							req
+								.user_app_profile_user_app_friendship_profile2_idTouser_app_profile
+								.signature,
+						user_app_avatar:
+							req
+								.user_app_profile_user_app_friendship_profile2_idTouser_app_profile
+								.user_app_avatar,
+					},
+				},
 			}));
 		} catch (err) {
 			console.log(err);
@@ -198,34 +263,36 @@ export const friendRepository = {
 		}
 	},
 
-	sendRequest: async function (data: ICreateFriendRequest): Promise<IFriendRequest> {
+	sendRequest: async function (
+		data: ICreateFriendRequest
+	): Promise<IFriendRequest> {
 		try {
 			const toProfile = await prismaClient.user_app_profile.findFirst({
-				where: { 
-					auth_user: { username: data.toUsername }
+				where: {
+					auth_user: { username: data.toUsername },
 				},
-				select: { id: true }
+				select: { id: true },
 			});
-			
+
 			if (!toProfile) throw new Error("User profile not found");
 
 			const request = await prismaClient.user_app_friendship.create({
 				data: {
 					accepted: false,
-					profile1_id: data.profile1_id,  // Changed from fromProfileId
-					profile2_id: toProfile.id
+					profile1_id: data.profile1_id, // Changed from fromProfileId
+					profile2_id: toProfile.id,
 				},
 				select: {
 					profile1_id: true,
 					profile2_id: true,
-					accepted: true
+					accepted: true,
 				},
 			});
-			
+
 			return {
 				profile1_id: request.profile1_id,
 				profile2_id: request.profile2_id,
-				accepted: request.accepted
+				accepted: request.accepted,
 			};
 		} catch (err) {
 			console.log(err);
@@ -233,13 +300,15 @@ export const friendRepository = {
 		}
 	},
 
-	acceptRequest: async function (data: IAcceptFriendRequest): Promise<IFriendRequest> {
+	acceptRequest: async function (
+		data: IAcceptFriendRequest
+	): Promise<IFriendRequest> {
 		try {
 			const fromProfile = await prismaClient.user_app_profile.findFirst({
 				where: {
-					auth_user: { username: data.fromUsername }
+					auth_user: { username: data.fromUsername },
 				},
-				select: { id: true }
+				select: { id: true },
 			});
 
 			if (!fromProfile) throw new Error("User profile not found");
@@ -247,18 +316,18 @@ export const friendRepository = {
 			const request = await prismaClient.user_app_friendship.updateMany({
 				where: {
 					profile1_id: fromProfile.id,
-					profile2_id: data.profile2_id,  // Changed from toProfileId
-					accepted: false
+					profile2_id: data.profile2_id, // Changed from toProfileId
+					accepted: false,
 				},
 				data: {
-					accepted: true
-				}
+					accepted: true,
+				},
 			});
 
 			return {
 				profile1_id: fromProfile.id,
-				profile2_id: data.profile2_id,  // Changed from toProfileId
-				accepted: true
+				profile2_id: data.profile2_id, // Changed from toProfileId
+				accepted: true,
 			};
 		} catch (err) {
 			console.log(err);
@@ -266,26 +335,32 @@ export const friendRepository = {
 		}
 	},
 
-	cancelRequest: async function (data: ICancelFriendRequest): Promise<ICanceledRequest> {
+	cancelRequest: async function (
+		data: ICancelFriendRequest
+	): Promise<ICanceledRequest> {
 		try {
 			const otherProfile = await prismaClient.user_app_profile.findFirst({
 				where: {
-					auth_user: { username: data.username }
+					auth_user: { username: data.username },
 				},
-				select: { id: true }
+				select: { id: true },
 			});
 
 			if (!otherProfile) throw new Error("User profile not found");
 
-			const profile1_id = data.isIncoming ? otherProfile.id : data.profile1_id;
-			const profile2_id = data.isIncoming ? data.profile1_id : otherProfile.id;
+			const profile1_id = data.isIncoming
+				? otherProfile.id
+				: data.profile1_id;
+			const profile2_id = data.isIncoming
+				? data.profile1_id
+				: otherProfile.id;
 
 			await prismaClient.user_app_friendship.deleteMany({
 				where: {
 					profile1_id,
 					profile2_id,
-					accepted: false
-				}
+					accepted: false,
+				},
 			});
 
 			return { status: "canceled" };
@@ -295,13 +370,15 @@ export const friendRepository = {
 		}
 	},
 
-	deleteFriend: async function (data: IDeleteFriend): Promise<IDeletedFriend> {
+	deleteFriend: async function (
+		data: IDeleteFriend
+	): Promise<IDeletedFriend> {
 		try {
 			const otherProfile = await prismaClient.user_app_profile.findFirst({
 				where: {
-					auth_user: { username: data.username }
+					auth_user: { username: data.username },
 				},
-				select: { id: true }
+				select: { id: true },
 			});
 
 			if (!otherProfile) throw new Error("User profile not found");
@@ -309,11 +386,17 @@ export const friendRepository = {
 			await prismaClient.user_app_friendship.deleteMany({
 				where: {
 					OR: [
-						{ profile1_id: data.profile1_id, profile2_id: otherProfile.id },
-						{ profile1_id: otherProfile.id, profile2_id: data.profile1_id }
+						{
+							profile1_id: data.profile1_id,
+							profile2_id: otherProfile.id,
+						},
+						{
+							profile1_id: otherProfile.id,
+							profile2_id: data.profile1_id,
+						},
 					],
-					accepted: true
-				}
+					accepted: true,
+				},
 			});
 
 			return { status: "deleted" };
