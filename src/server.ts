@@ -18,7 +18,7 @@ import { createTunnel } from "./sshTunnel";
 dotenv.config();
 
 const HOST = "0.0.0.0";
-const PORT = process.env.RAILWAY_STATIC_URL ? process.env.PORT : 3003;
+const PORT = process.env.PORT || 3003;
 
 const startServer = async () => {
 	try {
