@@ -3,8 +3,15 @@ import { Request, Response } from "express";
 import { base64ToImage } from "../../../tools/base64ToImage";
 import { CreateGroup } from "../types";
 import { serializeBigInt } from "../../../tools/serializeBigInt";
+import { Server } from "socket.io";
 
 export class ChatController {
+	private io: Server;
+
+	constructor(io: Server) {
+		this.io = io;
+	}
+
 	public sendMessage = async (req: Request, res: Response): Promise<void> => {
 		try {
 			const { content, chatGroupId } = req.body;
@@ -19,15 +26,13 @@ export class ChatController {
 				where: { user_id: Number(authorId) },
 			});
 
-			if (!myProfile) throw new Error("myProfile in sendMessage bobo")
+			if (!myProfile) throw new Error("Profile not found");
 
 			const chatGroup = await prismaClient.chat_app_chatgroup.findFirst({
 				where: {
 					id: BigInt(chatGroupId),
 					chat_app_chatgroup_members: {
-						some: {
-							profile_id: myProfile.id,
-						},
+						some: { profile_id: myProfile.id },
 					},
 				},
 			});
@@ -47,12 +52,19 @@ export class ChatController {
 					sent_at: new Date(),
 				},
 				include: {
-					user_app_profile: true,
-					chat_app_chatgroup: true,
+					user_app_profile: { include: { auth_user: true } },
 				},
 			});
 
-			res.status(201).json(serializeBigInt(message));
+			const serializedMessage = serializeBigInt(message);
+
+			// Уведомляем всех участников
+			this.io.to(chatGroupId.toString()).emit("group_message", {
+				...serializedMessage,
+				chatGroupId,
+			});
+
+			res.status(201).json(serializedMessage);
 		} catch (error) {
 			console.error("Error sending message:", error);
 			res.status(500).json({
@@ -63,7 +75,6 @@ export class ChatController {
 		}
 	};
 
-	// Получить или создать личный чат
 	public getOrCreateChatGroup = async (
 		req: Request,
 		res: Response
@@ -71,12 +82,6 @@ export class ChatController {
 		try {
 			const { recipientId } = req.body;
 			const currentUserId = req.user?.id;
-			console.log(
-				"currentUserId:",
-				currentUserId,
-				"recipientId:",
-				recipientId
-			);
 
 			if (!recipientId || !currentUserId) {
 				res.status(400).json({
@@ -89,7 +94,7 @@ export class ChatController {
 				where: { user_id: Number(currentUserId) },
 			});
 
-			if (!myProfile) throw new Error('you not found')
+			if (!myProfile) throw new Error("Profile not found");
 
 			let chatGroup = await prismaClient.chat_app_chatgroup.findFirst({
 				where: {
@@ -107,10 +112,7 @@ export class ChatController {
 							chat_app_chatgroup_members: {
 								every: {
 									profile_id: {
-										in: [
-											myProfile.id,
-											BigInt(recipientId),
-										],
+										in: [myProfile.id, BigInt(recipientId)],
 									},
 								},
 							},
@@ -120,7 +122,6 @@ export class ChatController {
 			});
 
 			if (!chatGroup) {
-				console.log("ChatGroup is not found")
 				chatGroup = await prismaClient.chat_app_chatgroup.create({
 					data: {
 						name: `chat-${Date.now()}`,
@@ -134,10 +135,9 @@ export class ChatController {
 						},
 					},
 				});
-				console.log("ChatGroup is created")
 			}
 
-			res.json({ chatGroupId: Number(chatGroup.id)});
+			res.json({ chatGroupId: Number(chatGroup.id) });
 		} catch (error) {
 			console.error("Error in getOrCreateChatGroup:", error);
 			res.status(500).json({
@@ -147,46 +147,54 @@ export class ChatController {
 		}
 	};
 
-	// История сообщений группы
 	public getChatHistory = async (
 		req: Request,
 		res: Response
 	): Promise<void> => {
 		try {
 			const { chatId } = req.params;
-			console.log('chatid: ', chatId)
+
 			const messages = await prismaClient.chat_app_chatmessage.findMany({
 				where: {
-					chat_group_id: BigInt(+chatId),
+					chat_group_id: BigInt(chatId),
 				},
 				include: {
 					user_app_profile: {
-						include: {
-							auth_user: true
-						}
+						include: { auth_user: true },
 					},
 				},
 			});
 
-			res.json(serializeBigInt(messages))
-		} catch (err) {
-			console.log('all messages chat err: ', err)
-			res.status(500).json({ error: err });
+			res.json(serializeBigInt(messages));
+		} catch (error) {
+			console.error("Error fetching chat history:", error);
+			res.status(500).json({ error: "Failed to fetch chat history" });
 		}
 	};
 
 	public getAllChats = async (req: Request, res: Response) => {
 		try {
-			const userId = req.user?.id || res.locals.userId;
+			const userId: number = res.locals.userId;
+
+			const user = await prismaClient.user.findUnique({
+				where: {
+					id: userId,
+				},
+				include: {
+					user_app_profile: true,
+				},
+			});
+
+			if (!user)
+				throw new Error(
+					"getAllChast USER BOOBOBOOBOBOBOBOBOBOOBOBOBOBOBOOB"
+				);
 
 			const chats = await prismaClient.chat_app_chatgroup.findMany({
 				where: {
 					chat_app_chatgroup_members: {
-						some: {
-							profile_id: BigInt(userId),
-						},
+						some: { profile_id: Number(user.user_app_profile?.id) },
 					},
-					is_personal_chat: false,
 				},
 				include: {
 					chat_app_chatgroup_members: {
@@ -196,25 +204,34 @@ export class ChatController {
 									user_app_avatar: {
 										where: { active: true },
 									},
-									auth_user: true
+									auth_user: true,
 								},
 							},
 						},
 					},
-					chat_app_chatmessage: true,
+					chat_app_chatmessage: {
+						include: {
+							user_app_profile: {
+								include: {
+									auth_user: true,
+									user_app_avatar: true,
+								},
+							},
+						},
+					},
 				},
 			});
 
-			res.json(chats);
+			res.json(serializeBigInt(chats));
 		} catch (error) {
+			console.error("Error fetching chats:", error);
 			res.status(500).json({ error: "Failed to fetch chats" });
 		}
 	};
 
-	// Создать новую группу
 	public createGroup = async (req: Request, res: Response) => {
 		try {
-			const userId: number = req.user.id;
+			const userId = req.user.id;
 			const data: CreateGroup = req.body;
 
 			const avatarData = await base64ToImage(data.avatar);
@@ -227,7 +244,7 @@ export class ChatController {
 					is_personal_chat: false,
 					chat_app_chatgroup_members: {
 						create: [
-							...data.members.map((id: number) => ({
+							...data.members.map((id) => ({
 								profile_id: BigInt(id),
 							})),
 							{ profile_id: BigInt(userId) },
@@ -236,15 +253,14 @@ export class ChatController {
 				},
 				include: {
 					chat_app_chatgroup_members: {
-						include: {
-							user_app_profile: true,
-						},
+						include: { user_app_profile: true },
 					},
 				},
 			});
 
 			res.json(group);
 		} catch (error) {
+			console.error("Error creating group:", error);
 			res.status(500).json({ error: "Failed to create group" });
 		}
 	};

@@ -62,7 +62,6 @@ export const userPostRepository = {
 						},
 					},
 					post_app_post_images: {
-						
 						createMany: {
 							data: imageIds,
 						},
@@ -119,24 +118,62 @@ export const userPostRepository = {
 		}
 	},
 
-	deletePost: async function (profileId: bigint, postId: bigint) {
+	deletePost: async function (userId: number, id: number) {
 		try {
-			const post = await prismaClient.post_app_post.findFirst({
-				where: {
-					id: postId,
+			const post = await prismaClient.post_app_post.findUnique({
+				where: { id },
+				include: {
+					user_app_profile: {
+						include: {
+							auth_user: true,
+						},
+					},
+					post_app_post_images: true,
+					post_app_post_tags: true,
 				},
 			});
 
-			if (post?.author_id !== profileId) {
-				return "you're not the owner";
+			if (!post) new Error("post is not found");
+
+			if (userId !== post?.user_app_profile.auth_user.id) {
+				return "you are not post author";
 			}
 
-			await prismaClient.post_app_post.delete({
+			await prismaClient.post_app_post_images.deleteMany({
 				where: {
-					id: postId,
+					post_app_post: {
+						id,
+					},
 				},
 			});
-			return `Post ${postId} successfully deleted`;
+			await prismaClient.post_app_link.deleteMany({
+				where: {
+					post_app_post: {
+						id,
+					},
+				},
+			});
+			await prismaClient.post_app_post_likes.deleteMany({
+				where: {
+					post_app_post: {
+						id,
+					},
+				},
+			});
+			await prismaClient.post_app_post_views.deleteMany({
+				where: {
+					post_app_post: {
+						id,
+					},
+				},
+			});
+			await prismaClient.post_app_post.delete({
+				where: {
+					id,
+				},
+			});
+
+			return `Post ${id} successfully deleted`;
 		} catch (error) {
 			console.log(error);
 			throw error;
@@ -144,8 +181,8 @@ export const userPostRepository = {
 	},
 
 	updatePost: async function (
-		profileId: bigint,
-		postId: bigint,
+		profileId: number,
+		postId: number,
 		data: UpdateUserPost,
 		imagesData: { filename: string; file: string }[]
 	) {
@@ -204,9 +241,9 @@ export const userPostRepository = {
 		}
 	},
 
-	getPostById: async function (id: bigint) {
+	getPostById: async function (id: number) {
 		try {
-			const post = await prismaClient.post_app_post.findUnique({
+			const post = await prismaClient.post_app_post.findFirst({
 				where: { id },
 				include: {
 					post_app_post_tags: {
@@ -223,7 +260,7 @@ export const userPostRepository = {
 					},
 				},
 			});
-			return post as any;
+			return post;
 		} catch (error) {
 			console.log(error);
 			throw error;
@@ -263,7 +300,7 @@ export const userPostRepository = {
 					id: Number(userId),
 				},
 				include: {
-					user_app_profile: true
+					user_app_profile: true,
 				},
 			});
 
@@ -299,4 +336,4 @@ export const userPostRepository = {
 			throw error;
 		}
 	},
-};  
+};

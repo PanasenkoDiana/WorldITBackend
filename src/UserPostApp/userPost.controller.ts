@@ -36,10 +36,12 @@ export const userPostController = {
     },
 
     deletePost: async function (req: Request, res: Response) {
-        const userId = BigInt(res.locals.userId);
+        const authorId = res.locals.userId;
         const data = req.body;
-        const postId = BigInt(data.id);
-        const result = await userPostService.deletePost(userId, postId);
+
+        console.log(data)
+
+        const result = await userPostService.deletePost(authorId, data.numberId);
         res.json(replaceBigInt(result));
     },
 
@@ -54,9 +56,9 @@ export const userPostController = {
         >,
         res: Response
     ) {
-        const userId = BigInt(res.locals.userId);
+        const userId = Number(res.locals.userId)
         const { postId, images, ...data } = req.body;
-        const postIdBigInt = BigInt(postId);
+        const postIdNumber = Number(postId);
 
         // Filter out any undefined, null, or empty string 'file' properties here too
         const imagesForService: string[] = images
@@ -67,7 +69,7 @@ export const userPostController = {
 
         const result = await userPostService.updatePost(
             userId,
-            postIdBigInt,
+            postIdNumber,
             data,
             imagesForService
         );
@@ -75,7 +77,7 @@ export const userPostController = {
     },
 
 	getPostById: async function (req: Request, res: Response) {
-		const id = BigInt(req.params.id);
+		const id = Number(req.params.id);
 		const result = await userPostService.getPostById(id);
 		res.json(replaceBigInt(result));
 	},

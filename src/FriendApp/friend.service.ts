@@ -1,4 +1,5 @@
 import { error, Result, success } from "../tools/result";
+import { serializeBigInt } from "../tools/serializeBigInt";
 import { friendRepository } from "./friend.repository";
 import {
 	IAcceptFriendRequest,
@@ -103,7 +104,7 @@ export const friendService = {
 	): Promise<Result<IDeletedFriend>> {
 		try {
 			const status = await friendRepository.deleteFriend(data);
-			return success(status);
+			return success(serializeBigInt(status));
 		} catch (err) {
 			console.log(err);
 			error("Error sending friend request");
@@ -111,3 +112,4 @@ export const friendService = {
 		}
 	},
 };
+ 

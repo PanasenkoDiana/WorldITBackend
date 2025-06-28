@@ -14,21 +14,20 @@ export type ImageCreateMany = {
 }[];
 
 export type UserPost = Prisma.post_app_postGetPayload<{
-    include: {
-        post_app_post_tags: {
-            include: { post_app_tag: true },
-        },
-        post_app_link: true,
-        post_app_post_images: {
-            include: { post_app_image: true },
-        },
-        user_app_profile: {
-            include: {
-                user_app_avatar: true,
-                auth_user: true
-            },
-        },
-    },
+	include: {
+		post_app_post_tags: {
+			include: { post_app_tag: true };
+		};
+		post_app_link: true;
+		post_app_post_images: {
+			include: { post_app_image: true };
+		};
+		user_app_profile: {
+			include: {
+				user_app_avatar: true;
+			};
+		};
+	};
 }>;
 
 export type UpdateUserPost = {

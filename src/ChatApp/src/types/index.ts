@@ -13,6 +13,12 @@ export interface Message {
     timestamp: Date;
 }
 
+export interface CreateMessage {
+    content: string;
+    senderId: number;
+    groupId: string;
+}
+
 export interface Group {
     id: string;
     name: string;
@@ -23,4 +29,10 @@ export interface CreateGroup {
     name: string;
     members: number[];
     avatar: string
+}
+
+
+
+export interface ReceiveGroupMessage {
+    
 }

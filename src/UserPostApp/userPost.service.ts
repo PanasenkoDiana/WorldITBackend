@@ -10,22 +10,8 @@ import {
 import { base64ToImage } from "../tools/base64ToImage";
 import fs from "fs";
 import path from "path";
-// export interface Image {
-//     id: number;
-//     userId: number;
-//     filename: string;
-//     file: string;
-//     postId?: number;
-//     post?: UserPost;
-// }
+import { UserRepositories } from "../UserApp/user.repository";
 
-// export interface UserPost {
-//     id: number;
-//     userId: number;
-//     title: string;
-//     content: string;
-//     images?: Image[];
-// }
 export const userPostService = {
 	createPost: async function (
 		profileId: bigint,
@@ -50,33 +36,17 @@ export const userPostService = {
 	},
 
 	deletePost: async function (
-		profileId: bigint,
-		postId: bigint
+		authorId: number,
+		id: number
 	): Promise<Result<string>> {
 		try {
-			const post = await userPostRepository.getPostById(postId);
-			if (!post) {
-				return error("Post not found");
-			}
-
-			if (post.author_id !== profileId) {
-				return error("Unauthorized to delete this post");
-			}
-
-			if (post.post_app_post_images && post.post_app_post_images.length > 0) {
-				for (const postImage of post.post_app_post_images) {
-					const image = postImage.post_app_image;
-					if (image) {
-						await fs.promises.unlink(
-							path.join(__dirname, "../../media", image.filename)
-						);
-					}
-				}
-			}
+			console.log(authorId)
+			console.log(id)
+			console.log("deleting post")
 
 			const deletedPost = await userPostRepository.deletePost(
-				profileId,
-				postId
+				authorId,
+				id
 			);
 			return success(deletedPost);
 		} catch (err) {
@@ -86,18 +56,18 @@ export const userPostService = {
 	},
 
 	updatePost: async function (
-		profileId: bigint,
-		postId: bigint,
+		profileId: number,
+		postId: number,
 		data: UpdateUserPost,
 		images: string[]
-	): Promise<Result<UserPostWithoutIncludes>> {
+	): Promise<Result<UserPostWithoutIncludes>> {     
 		try {
 			const existingPost = await userPostRepository.getPostById(postId);
 			if (!existingPost) {
 				return error("Post not found");
 			}
 
-			if (existingPost.author_id !== profileId) {
+			if (Number(existingPost.author_id) !== profileId) {
 				return error("Unauthorized to update this post");
 			}
 
@@ -122,8 +92,8 @@ export const userPostService = {
 			return error("Failed to update post");
 		}
 	},
-
-	getPostById: async function (id: bigint): Promise<Result<UserPost>> {
+	
+	getPostById: async function (id: number): Promise<Result<UserPost>> {
 		try {
 			const post = await userPostRepository.getPostById(id);
 			if (!post) {
@@ -146,6 +116,7 @@ export const userPostService = {
 			return error("getAllPosts error");
 		}
 	},
+	
 	getMyPosts: async function (profileId: bigint): Promise<Result<UserPost[]>> {
 		try {
 			const myPosts = await userPostRepository.getMyPosts(profileId);
