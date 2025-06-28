@@ -49,9 +49,10 @@ const startServer = async () => {
 		app.use("/api/albums", albumRouter);
 		app.use("/api/chats", createChatRouter(io));
 
-		httpServer.listen(PORT, Number(HOST), () => {
-			console.log(`🚀 Server running at http://${HOST}:${PORT}`);
+		httpServer.listen(PORT, () => {
+			console.log(`🚀 Server running on port ${PORT}`);
 		});
+
 		const closeTunnel = () => {
 			console.log("🔌 Closing SSH tunnel and DB connection");
 			server.close();
