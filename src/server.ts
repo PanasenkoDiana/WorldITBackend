@@ -18,7 +18,7 @@ import { createTunnel } from "./sshTunnel";
 dotenv.config();
 
 const HOST = "0.0.0.0";
-const PORT = process.env.PORT || 3003;
+const PORT = process.env.RAILWAY_STATIC_URL ? process.env.PORT : 8000;
 
 const startServer = async () => {
 	try {
@@ -50,7 +50,7 @@ const startServer = async () => {
 		app.use("/api/chats", createChatRouter(io));
 
 		httpServer.listen(PORT, () => {
-			console.log(`🚀 Server running on port ${PORT}`);
+			console.log(`🚀 Server running on port ${HOST} ${PORT}`);
 		});
 
 		const closeTunnel = () => {
